@@ -41,6 +41,14 @@
         }
     },
     "scripts": {
+        "deploy": [
+            "git pull origin main",
+            "@php artisan migrate --force",
+            "npm run build",
+            "rsync -av --exclude=\"index.php\" public/ ../public_html/",
+            "@php artisan optimize:clear",
+            "@php artisan optimize"
+        ],
         "setup": [
             "composer install",
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
