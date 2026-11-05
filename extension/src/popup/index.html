@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sirkelta WaSender</title>
+  <link rel="stylesheet" href="./popup.css">
+</head>
+<body class="bg-slate-50 text-slate-800 p-4 w-[320px] max-w-[320px] overflow-hidden font-sans select-none">
+  <!-- Brand Header -->
+  <header class="flex items-center justify-between pb-3 border-b border-slate-200">
+    <div class="flex items-center gap-2.5">
+      <img src="./logo.png" class="w-8 h-8 rounded-xl object-contain shadow-xs shrink-0" alt="Sirkelta Logo">
+      <div>
+        <h1 class="font-extrabold text-xs text-slate-900 leading-tight">Sirkelta WaSender</h1>
+        <p class="text-[10px] text-emerald-700 font-semibold">WhatsApp Web Automation</p>
+      </div>
+    </div>
+    <div id="waStatusBadge" class="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+      <span id="waStatusDot" class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+      <span id="waStatusText">Memeriksa...</span>
+    </div>
+  </header>
+
+  <!-- Main Action -->
+  <main class="py-4 space-y-3">
+    <!-- Big WhatsApp Web Button -->
+    <button
+      id="btnOpenWhatsApp"
+      type="button"
+      class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-800 active:scale-[0.98] text-white font-bold text-xs shadow-md hover:shadow-lg transition-all duration-150 flex items-center justify-center gap-2.5 cursor-pointer group"
+    >
+      <svg class="w-5 h-5 text-white transition-transform group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+      </svg>
+      <span class="tracking-wide">Buka WhatsApp Web</span>
+    </button>
+
+    <!-- Sidebar Info Card -->
+    <div class="p-3 bg-white border border-slate-200/90 rounded-xl text-[11px] text-slate-600 space-y-1.5 shadow-2xs leading-relaxed">
+      <div class="flex items-center gap-1.5 text-emerald-800 font-bold text-[11px]">
+        <span>⚡ Sidebar Otomatis Aktif</span>
+      </div>
+      <p class="text-slate-500 text-[10.5px]">
+        Fitur broadcast pesan massal, template draf, buku kontak, dan privasi otomatis aktif di <strong>Sidebar WhatsApp Web</strong> Anda.
+      </p>
+    </div>
+  </main>
+
+  <!-- Footer Navigation -->
+  <footer class="pt-2 border-t border-slate-200 flex items-center justify-between text-[10px] text-slate-400">
+    <span class="font-medium">Sirkelta WaSender v1.0</span>
+    <a id="linkDashboard" href="#" class="text-emerald-700 hover:text-emerald-800 font-bold hover:underline">
+      Dashboard Sirkelta ➔
+    </a>
+  </footer>
+
+  <script type="module" src="./popup.ts"></script>
+</body>
+</html>

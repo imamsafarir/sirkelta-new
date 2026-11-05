@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Sirkelta - Mode Offline</title>
+    <link rel="icon" type="image/png" href="/icons/icon-192x192.png">
+    <meta name="theme-color" content="#4f46e5">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            touch-action: pan-x pan-y;
+            -webkit-text-size-adjust: 100%;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 1.5rem;
+            text-align: center;
+        }
+        .card {
+            background: #ffffff;
+            border-radius: 1.25rem;
+            padding: 2rem 1.5rem;
+            max-width: 420px;
+            width: 100%;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.03);
+            border: 1px solid #e2e8f0;
+        }
+        .icon-circle {
+            width: 72px;
+            height: 72px;
+            margin: 0 auto 1.25rem;
+            background: #eef2ff;
+            color: #4f46e5;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .icon-circle svg {
+            width: 36px;
+            height: 36px;
+        }
+        h1 {
+            font-size: 1.35rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: #1e1b4b;
+        }
+        p {
+            font-size: 0.925rem;
+            color: #64748b;
+            line-height: 1.5;
+            margin-bottom: 1.75rem;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 0.85rem 1.25rem;
+            background: #4f46e5;
+            color: #ffffff;
+            border-radius: 0.75rem;
+            font-size: 0.95rem;
+            font-weight: 600;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn:hover {
+            background: #4338ca;
+        }
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            background: #fef2f2;
+            color: #ef4444;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border-radius: 9999px;
+            margin-bottom: 1rem;
+        }
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #ef4444;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="status-pill">
+            <span class="status-dot"></span>
+            Sedang Offline
+        </div>
+        <div class="icon-circle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="1" y1="1" x2="23" y2="23"></line>
+                <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path>
+                <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path>
+                <path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path>
+                <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path>
+                <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+                <line x1="12" y1="20" x2="12.01" y2="20"></line>
+            </svg>
+        </div>
+        <h1>Anda Sedang Tidak Terhubung ke Internet</h1>
+        <p>Aplikasi Sirkelta tetap menyimpan data catatan transaksi Anda secara lokal. Begitu koneksi internet kembali, sistem akan otomatis melakukan sinkronisasi.</p>
+        <button class="btn" onclick="window.location.reload()">
+            Coba Muat Ulang
+        </button>
+    </div>
+</body>
+</html>
+

@@ -1,0 +1,903 @@
+/* ==========================================================================
+   WA SENDER SIRKELTA - SIDEBAR & WHATSAPP WEB STYLES
+   Colors: Emerald (#059669), Slate (#0f172a, #64748b), Amber (#f59e0b)
+   Strict Light Theme Enforced
+   ========================================================================== */
+
+/* Privacy Blur rules for WhatsApp Web */
+body.wasender-blur-names #side [role="gridcell"] span[title],
+body.wasender-blur-names #main header span[dir="auto"],
+body.wasender-blur-names #side span[title] {
+  filter: blur(5px) !important;
+  transition: filter 0.2s ease;
+}
+body.wasender-blur-names #side [role="gridcell"] span[title]:hover,
+body.wasender-blur-names #main header span[dir="auto"]:hover,
+body.wasender-blur-names #side span[title]:hover {
+  filter: none !important;
+}
+
+body.wasender-blur-last-msg #side [role="gridcell"] div[tabindex="-1"] span:not([title]),
+body.wasender-blur-last-msg #side div[data-testid="last-msg-status"] + span,
+body.wasender-blur-last-msg #side span[data-testid="last-msg-status"] ~ span {
+  filter: blur(5px) !important;
+  transition: filter 0.2s ease;
+}
+body.wasender-blur-last-msg #side [role="gridcell"] div[tabindex="-1"] span:not([title]):hover {
+  filter: none !important;
+}
+
+body.wasender-blur-avatars #side img,
+body.wasender-blur-avatars #main header img {
+  filter: blur(8px) !important;
+  transition: filter 0.2s ease;
+}
+body.wasender-blur-avatars #side img:hover,
+body.wasender-blur-avatars #main header img:hover {
+  filter: none !important;
+}
+
+body.wasender-blur-media #main div[data-testid*="image"],
+body.wasender-blur-media #main img:not([alt*="Emoji"]) {
+  filter: blur(12px) !important;
+  transition: filter 0.2s ease;
+}
+body.wasender-blur-media #main div[data-testid*="image"]:hover,
+body.wasender-blur-media #main img:not([alt*="Emoji"]):hover {
+  filter: none !important;
+}
+
+/* WhatsApp Layout Dynamic Shift */
+body.wasender-docked-mode #app {
+  width: calc(100vw - 460px) !important;
+  max-width: calc(100vw - 460px) !important;
+  margin-right: 460px !important;
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), max-width 0.25s cubic-bezier(0.4, 0, 0.2, 1), margin-right 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-sizing: border-box !important;
+}
+
+body.wasender-docked-mode #app > div {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+html, body {
+  overflow-x: hidden !important;
+}
+
+/* Floating Launcher Button */
+#wasender-launcher-btn {
+  position: fixed;
+  top: 40%;
+  right: 0;
+  z-index: 999998;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 13px 9px 11px;
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  color: #ffffff;
+  border-radius: 12px 0 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-right: none;
+  box-shadow: -3px 4px 18px rgba(5, 150, 105, 0.35);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+#wasender-launcher-btn:hover {
+  transform: translateX(-4px);
+  box-shadow: -4px 6px 22px rgba(5, 150, 105, 0.45);
+}
+#wasender-launcher-btn .wasender-launcher-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  object-fit: contain;
+}
+#wasender-launcher-btn .wasender-launcher-arrow {
+  font-size: 11px;
+  opacity: 0.9;
+}
+
+/* ==========================================================================
+   FORCE STRICT LIGHT THEME FOR SIDEBAR (IMMUNE TO WHATSAPP DARK MODE)
+   ========================================================================== */
+#wasender-sidebar-root,
+#wasender-sidebar-root *,
+#wasender-sidebar-root *::before,
+#wasender-sidebar-root *::after,
+body.dark #wasender-sidebar-root,
+html.dark #wasender-sidebar-root,
+body.dark #wasender-sidebar-root *,
+html.dark #wasender-sidebar-root * {
+  color-scheme: light !important;
+  box-sizing: border-box;
+}
+
+/* Sidebar Drawer Root Container */
+#wasender-sidebar-root {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 460px;
+  max-width: 95vw;
+  height: 100vh;
+  z-index: 999999;
+  background-color: #f8fafc !important;
+  border-left: 1px solid #e2e8f0 !important;
+  box-shadow: -6px 0 32px rgba(0, 0, 0, 0.14);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-size: 13px;
+  color: #0f172a !important;
+}
+
+#wasender-sidebar-root.is-open {
+  transform: translateX(0);
+}
+
+/* Top Header */
+.wasender-header {
+  background: rgba(236, 253, 245, 0.98) !important;
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid #a7f3d0 !important;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.wasender-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.wasender-brand-logo {
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  object-fit: contain;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+.wasender-brand-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a !important;
+  line-height: 1.25;
+}
+.wasender-brand-sub {
+  font-size: 11.5px;
+  color: #059669 !important;
+  font-weight: 600;
+}
+.wasender-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.wasender-btn-icon {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #475569 !important;
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.wasender-btn-icon:hover {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+  border-color: #94a3b8 !important;
+}
+.wasender-btn-icon.is-active {
+  background: #059669 !important;
+  color: #ffffff !important;
+  border-color: #059669 !important;
+}
+
+/* User Account & Quota Bar */
+.wasender-account-bar {
+  background: #ffffff !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+}
+.wasender-account-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.wasender-account-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.wasender-account-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #0f172a !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 170px;
+}
+.wasender-plan-badge {
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.wasender-plan-badge.free {
+  background: #fef3c7 !important;
+  color: #92400e !important;
+  border: 1px solid #fde68a !important;
+}
+.wasender-plan-badge.pro {
+  background: linear-gradient(135deg, #059669, #10b981) !important;
+  color: #ffffff !important;
+  box-shadow: 0 1px 4px rgba(5, 150, 105, 0.3);
+}
+.wasender-quota-text {
+  font-size: 11.5px;
+  color: #64748b !important;
+  font-weight: 500;
+}
+.wasender-quota-text strong {
+  color: #059669 !important;
+  font-family: monospace;
+  font-size: 12px;
+}
+.wasender-account-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.wasender-btn-upgrade {
+  background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+  color: #ffffff !important;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 1px 4px rgba(245, 158, 11, 0.35);
+  transition: opacity 0.15s ease;
+  white-space: nowrap;
+}
+.wasender-btn-upgrade:hover {
+  opacity: 0.9;
+}
+.wasender-btn-logout {
+  background: none !important;
+  border: none !important;
+  color: #e11d48 !important;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 3px 6px;
+}
+.wasender-btn-logout:hover {
+  text-decoration: underline;
+}
+
+/* Navigation Tabs */
+.wasender-nav-tabs {
+  background: #f1f5f9 !important;
+  padding: 7px 12px;
+  display: flex;
+  gap: 5px;
+  border-bottom: 1px solid #e2e8f0 !important;
+  flex-shrink: 0;
+}
+.wasender-tab-btn {
+  flex: 1;
+  background: transparent !important;
+  border: none !important;
+  padding: 8px 6px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #475569 !important;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.wasender-tab-btn:hover {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+.wasender-tab-btn.is-active {
+  background: #059669 !important;
+  color: #ffffff !important;
+  box-shadow: 0 1px 4px rgba(5, 150, 105, 0.28);
+}
+
+/* Tab Panes Container */
+.wasender-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: #f8fafc !important;
+}
+.wasender-body::-webkit-scrollbar {
+  width: 6px;
+}
+.wasender-body::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 99px;
+}
+.wasender-body::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.wasender-tab-content {
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+}
+.wasender-tab-content.is-active {
+  display: flex;
+}
+
+/* UI Cards */
+.wasender-card,
+body.dark #wasender-sidebar-root .wasender-card,
+html.dark #wasender-sidebar-root .wasender-card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 10px;
+  padding: 12px 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  color: #0f172a !important;
+}
+.wasender-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.wasender-card-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #0f172a !important;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.wasender-card-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 5px;
+}
+
+/* Inputs & Form Elements (STRICT LIGHT MODE) */
+.wasender-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #334155 !important;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+#wasender-sidebar-root select,
+#wasender-sidebar-root select option,
+body.dark #wasender-sidebar-root select,
+body.dark #wasender-sidebar-root select option,
+html.dark #wasender-sidebar-root select,
+html.dark #wasender-sidebar-root select option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  color-scheme: light !important;
+}
+
+.wasender-input,
+.wasender-textarea,
+.wasender-select,
+body.dark #wasender-sidebar-root .wasender-input,
+body.dark #wasender-sidebar-root .wasender-textarea,
+body.dark #wasender-sidebar-root .wasender-select {
+  width: 100%;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 8px;
+  padding: 8px 11px;
+  font-size: 13px;
+  color: #0f172a !important;
+  background-color: #ffffff !important;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  font-family: inherit;
+  color-scheme: light !important;
+}
+.wasender-input:focus,
+.wasender-textarea:focus,
+.wasender-select:focus,
+body.dark #wasender-sidebar-root .wasender-input:focus,
+body.dark #wasender-sidebar-root .wasender-textarea:focus,
+body.dark #wasender-sidebar-root .wasender-select:focus {
+  border-color: #059669 !important;
+  box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.18);
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+.wasender-textarea {
+  resize: vertical;
+  min-height: 68px;
+  font-family: monospace, sans-serif;
+  line-height: 1.45;
+  font-size: 12.5px;
+}
+
+/* Buttons */
+.wasender-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+.wasender-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed !important;
+}
+.wasender-btn-primary {
+  background: #059669 !important;
+  color: #ffffff !important;
+  box-shadow: 0 1px 3px rgba(5, 150, 105, 0.25);
+}
+.wasender-btn-primary:hover:not(:disabled) {
+  background: #047857 !important;
+}
+.wasender-btn-secondary {
+  background: #f1f5f9 !important;
+  color: #334155 !important;
+  border: 1px solid #cbd5e1 !important;
+}
+.wasender-btn-secondary:hover:not(:disabled) {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+.wasender-btn-warning {
+  background: #f59e0b !important;
+  color: #ffffff !important;
+}
+.wasender-btn-warning:hover:not(:disabled) {
+  background: #d97706 !important;
+}
+.wasender-btn-danger {
+  background: #e11d48 !important;
+  color: #ffffff !important;
+}
+.wasender-btn-danger:hover:not(:disabled) {
+  background: #be123c !important;
+}
+.wasender-btn-manage-green {
+  background: #059669 !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 6px rgba(5, 150, 105, 0.35) !important;
+  border: none !important;
+}
+.wasender-btn-manage-green:hover:not(:disabled) {
+  background: #047857 !important;
+  box-shadow: 0 4px 10px rgba(5, 150, 105, 0.45) !important;
+  transform: translateY(-1px);
+}
+.wasender-btn-xs {
+  padding: 5px 9px;
+  font-size: 11.5px;
+  border-radius: 6px;
+}
+
+/* Badges & Tags */
+.wasender-tag-btn {
+  background: #ecfdf5 !important;
+  border: 1px solid #a7f3d0 !important;
+  color: #047857 !important;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.wasender-tag-btn:hover {
+  background: #d1fae5 !important;
+}
+.wasender-tag-pro {
+  background: #fef3c7 !important;
+  border: 1px solid #fde68a !important;
+  color: #92400e !important;
+}
+.wasender-tag-pro:hover {
+  background: #fde68a !important;
+}
+
+/* Progress & Counters */
+.wasender-progress-bar-bg {
+  width: 100%;
+  height: 7px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.wasender-progress-bar-fill {
+  height: 100%;
+  background: #059669;
+  width: 0%;
+  transition: width 0.3s ease;
+}
+.wasender-counter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  text-align: center;
+  font-size: 12.5px;
+  padding-top: 6px;
+  border-top: 1px solid #f1f5f9;
+}
+
+/* Pro Lock Overlay / Badge */
+.wasender-pro-badge {
+  display: inline-block !important;
+  position: static !important;
+  background: #fef3c7 !important;
+  color: #b45309 !important;
+  border: 1px solid #fde68a !important;
+  font-size: 9.5px !important;
+  font-weight: 800 !important;
+  line-height: 1.2 !important;
+  padding: 1px 5px !important;
+  border-radius: 4px !important;
+  margin-left: 4px !important;
+  margin-right: 2px !important;
+  vertical-align: middle !important;
+  box-sizing: border-box !important;
+  white-space: nowrap !important;
+}
+.wasender-pro-locked {
+  position: relative;
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+/* Screen Lock Shield (Mengunci WhatsApp Web saat Pengiriman Berjalan) */
+#wasender-screen-shield {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 400px;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(2.5px);
+  -webkit-backdrop-filter: blur(2.5px);
+  z-index: 99998;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: all;
+  user-select: none;
+  animation: wasenderFadeIn 0.2s ease-out;
+}
+
+@keyframes wasenderFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.wasender-shield-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 24px 28px;
+  max-width: 440px;
+  margin: 0 20px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.15);
+  text-align: center;
+  border: 1px solid #e2e8f0;
+}
+
+.wasender-shield-icon {
+  font-size: 38px;
+  margin-bottom: 12px;
+  display: inline-block;
+  animation: wasenderPulse 2s infinite ease-in-out;
+}
+
+@keyframes wasenderPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+.wasender-shield-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+
+.wasender-shield-desc {
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.wasender-shield-tip {
+  font-size: 12px;
+  color: #059669;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+/* Banner Alerts */
+.wasender-alert {
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+}
+.wasender-alert-warning {
+  background: #fffbeb !important;
+  border: 1px solid #fef3c7 !important;
+  color: #92400e !important;
+}
+.wasender-alert-danger {
+  background: #fff1f2 !important;
+  border: 1px solid #fecdd3 !important;
+  color: #be123c !important;
+}
+.wasender-alert-success {
+  background: #ecfdf5 !important;
+  border: 1px solid #a7f3d0 !important;
+  color: #065f46 !important;
+}
+
+/* Privacy Switch Toggle */
+.wasender-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 0;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 12px;
+}
+.wasender-switch-row:last-child {
+  border-bottom: none;
+}
+.wasender-switch-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.wasender-switch-title {
+  font-weight: 600;
+  color: #1e293b !important;
+  font-size: 12.5px;
+}
+.wasender-switch-desc {
+  font-size: 11px;
+  color: #64748b !important;
+}
+.wasender-toggle {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+}
+.wasender-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.wasender-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #cbd5e1;
+  transition: 0.2s;
+  border-radius: 20px;
+}
+.wasender-slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  transition: 0.2s;
+  border-radius: 50%;
+}
+.wasender-toggle input:checked + .wasender-slider {
+  background-color: #059669;
+}
+.wasender-toggle input:checked + .wasender-slider:before {
+  transform: translateX(16px);
+}
+
+/* Template Item Card */
+.wasender-template-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  padding: 10px 12px;
+  background: #ffffff !important;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.wasender-template-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.wasender-template-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a !important;
+}
+.wasender-template-content {
+  font-size: 12px;
+  color: #334155 !important;
+  background: #f8fafc !important;
+  padding: 6px 9px;
+  border-radius: 6px;
+  white-space: pre-wrap;
+  max-height: 70px;
+  overflow-y: auto;
+  font-family: monospace;
+}
+.wasender-template-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+}
+
+/* Contact Item Card */
+.wasender-contact-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  padding: 9px 12px;
+  background: #ffffff !important;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.wasender-contact-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.wasender-contact-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: #ecfdf5 !important;
+  color: #059669 !important;
+  font-weight: 700;
+  font-size: 12.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid #a7f3d0;
+}
+.wasender-contact-details {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.wasender-contact-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wasender-contact-phone {
+  font-size: 12px;
+  color: #64748b !important;
+  font-family: monospace;
+}
+.wasender-contact-group {
+  font-size: 11px;
+  font-weight: 600;
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+  padding: 2px 7px;
+  border-radius: 5px;
+  border: 1px solid #e2e8f0;
+}
+.wasender-toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* Attachment Chips */
+.wasender-attachment-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 11px;
+  color: #334155;
+  max-width: 100%;
+}
+.wasender-attachment-chip-name {
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+.wasender-attachment-chip-size {
+  color: #94a3b8;
+  font-size: 10px;
+}
+.wasender-attachment-chip-remove {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+  font-weight: bold;
+}
+.wasender-attachment-chip-remove:hover {
+  color: #ef4444;
+}

@@ -1,0 +1,67 @@
+# Environment & Secrets
+.env
+.env.backup
+.env.production
+.env.*.local
+.env.local
+/auth.json
+/storage/*.key
+
+# Dependencies
+node_modules/
+/vendor/
+extension/node_modules/
+
+# Application Builds
+/public/build/
+/public/hot
+/public/storage
+/public/fonts-manifest.dev.json
+
+# Extension Distribution Build
+extension/dist/
+
+# Databases & SQLite
+*.sqlite
+*.sqlite-journal
+*.sqlite-backup
+database/database.sqlite
+database/database.sqlite-journal
+
+# Framework Storage & Logs
+*.log
+/storage/pail/
+/storage/framework/cache/data/*
+!/storage/framework/cache/data/.gitignore
+/storage/framework/cache/locks/*
+!/storage/framework/cache/locks/.gitignore
+/storage/framework/sessions/*
+!/storage/framework/sessions/.gitignore
+/storage/framework/testing/*
+!/storage/framework/testing/.gitignore
+/storage/framework/views/*
+!/storage/framework/views/.gitignore
+/storage/logs/*
+!/storage/logs/.gitignore
+
+# IDE & Editor Settings
+.idea/
+.vscode/
+.cursor/
+/.codex
+/.nova
+/.zed
+.phpactor.json
+_ide_helper.php
+Homestead.json
+Homestead.yaml
+
+# Testing & Caches
+.phpunit.cache/
+.phpunit.result.cache
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini

@@ -1,0 +1,11 @@
+{
+    "name": "WaSender",
+    "alias": "wasender",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\WaSender\\Providers\\WaSenderServiceProvider"
+    ],
+    "files": []
+}
