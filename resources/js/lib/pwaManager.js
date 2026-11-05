@@ -37,6 +37,9 @@ export function initPwa() {
             navigator.serviceWorker
                 .register('/sw.js')
                 .then((registration) => {
+                    // Cek pembaruan instan
+                    registration.update();
+
                     // Update check
                     registration.onupdatefound = () => {
                         const installingWorker = registration.installing;

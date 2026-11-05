@@ -147,6 +147,9 @@ const toggleSidebar = () => {
 };
 
 const logout = () => {
+    if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: 'PURGE_AUTH_CACHE' });
+    }
     router.post(route('logout'));
 };
 
@@ -164,19 +167,21 @@ const getInitials = (name) => {
     <Head :title="title + ' - Sirkelta'" />
 
     <div class="min-h-screen bg-muted/20 text-foreground flex flex-col md:flex-row font-sans selection:bg-primary selection:text-primary-foreground">
-        <!-- Mobile Header Bar -->
-        <div class="md:hidden flex items-center justify-between h-16 px-4 border-b bg-background sticky top-0 z-40">
-            <div class="flex items-center gap-2.5">
-                <img src="/images/logo.png" alt="Sirkelta" class="h-8 w-8 rounded-lg object-contain shadow-xs" />
-                <span class="font-extrabold text-base tracking-tight">Sirkelta</span>
-                <Badge variant="outline" class="text-[10px] uppercase font-bold">
-                    {{ activeModule === 'admin' ? 'Admin' : activeModule }}
-                </Badge>
+        <!-- Mobile Header Bar with Safe Area for iPhone Notch -->
+        <div class="md:hidden sticky top-0 z-40 bg-background/95 backdrop-blur-md border-b pt-safe">
+            <div class="flex items-center justify-between h-16 px-4">
+                <div class="flex items-center gap-2.5">
+                    <img src="/images/logo.png" alt="Sirkelta" class="h-8 w-8 rounded-lg object-contain shadow-xs" />
+                    <span class="font-extrabold text-base tracking-tight">Sirkelta</span>
+                    <Badge variant="outline" class="text-[10px] uppercase font-bold">
+                        {{ activeModule === 'admin' ? 'Admin' : activeModule }}
+                    </Badge>
+                </div>
+                <Button variant="ghost" size="icon" @click="isMobileOpen = !isMobileOpen">
+                    <Menu v-if="!isMobileOpen" class="h-5 w-5" />
+                    <X v-else class="h-5 w-5" />
+                </Button>
             </div>
-            <Button variant="ghost" size="icon" @click="isMobileOpen = !isMobileOpen">
-                <Menu v-if="!isMobileOpen" class="h-5 w-5" />
-                <X v-else class="h-5 w-5" />
-            </Button>
         </div>
 
         <!-- Mobile Drawer Backdrop -->
@@ -188,7 +193,7 @@ const getInitials = (name) => {
 
         <!-- Left Sidebar (Desktop & Mobile Drawer) -->
         <aside
-            class="fixed md:sticky top-0 bottom-0 left-0 z-50 h-screen border-r bg-sidebar text-sidebar-foreground transition-all duration-300 flex flex-col justify-between select-none"
+            class="fixed md:sticky top-0 bottom-0 left-0 z-50 h-screen border-r bg-sidebar text-sidebar-foreground transition-all duration-300 flex flex-col justify-between select-none pt-safe pb-safe"
             :class="[
                 isCollapsed ? 'md:w-20' : 'md:w-64',
                 isMobileOpen ? 'translate-x-0 w-64' : '-translate-x-full md:translate-x-0'
@@ -569,15 +574,16 @@ const getInitials = (name) => {
 
         <!-- Main Content Wrapper -->
         <div class="flex-1 flex flex-col min-w-0 overflow-y-auto">
-            <main class="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto pb-24 md:pb-8">
+            <main class="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] md:pb-8">
                 <slot />
             </main>
         </div>
 
-        <!-- Mobile Bottom Navigation Bar (Native App Style) -->
-        <nav class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-md border-t h-16 px-1 flex items-center justify-around shadow-lg safe-bottom">
-            <!-- Keuangan Mobile Nav Items -->
-            <template v-if="activeModule === 'keuangan'">
+        <!-- Mobile Bottom Navigation Bar (Native App Style with Safe Area) -->
+        <nav class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-md border-t pb-safe shadow-lg">
+            <div class="h-16 px-1 flex items-center justify-around">
+                <!-- Keuangan Mobile Nav Items -->
+                <template v-if="activeModule === 'keuangan'">
                 <!-- 1. Ringkasan -->
                 <Link
                     :href="route('keuangan.dashboard')"
@@ -741,6 +747,7 @@ const getInitials = (name) => {
                     <span class="text-[10px] mt-1 leading-none tracking-tight">Portal</span>
                 </Link>
             </template>
+            </div>
         </nav>
 
         <!-- Floating Flash Toast Notification -->

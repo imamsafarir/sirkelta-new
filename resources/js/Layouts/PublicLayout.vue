@@ -18,8 +18,8 @@ const page = usePage();
     <Head :title="title + ' - Sirkelta'" />
 
     <div class="min-h-screen bg-muted/20 text-foreground flex flex-col selection:bg-primary selection:text-primary-foreground font-sans">
-        <!-- Top Navbar -->
-        <header class="border-b bg-background/90 backdrop-blur-md sticky top-0 z-40">
+        <!-- Top Navbar with Safe Area -->
+        <header class="border-b bg-background/90 backdrop-blur-md sticky top-0 z-40 pt-safe">
             <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
                 <Link :href="route('home')" class="flex items-center gap-2.5">
                     <img src="/images/logo.png" alt="Sirkelta Logo" class="h-8 w-8 rounded-xl object-contain shadow-xs" />
@@ -64,7 +64,7 @@ const page = usePage();
 
         <!-- Footer -->
         <footer class="border-t bg-card text-muted-foreground mt-auto">
-            <div class="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+            <div class="max-w-6xl mx-auto px-4 sm:px-6 py-10 pb-[calc(2.5rem+env(safe-area-inset-bottom,0px))]">
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8 text-xs">
                     <div class="space-y-3 md:col-span-1">
                         <div class="flex items-center gap-2">

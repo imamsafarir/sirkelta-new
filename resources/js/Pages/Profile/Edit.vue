@@ -57,6 +57,7 @@ import {
     ShieldCheck,
     Pencil,
     ChevronRight,
+    Wrench,
 } from "lucide-vue-next";
 
 const props = defineProps({
@@ -630,6 +631,10 @@ const copyBankNumber = (number) => {
     }, 2000);
 };
 
+const isAllPaymentsDisabled = computed(() => {
+    return !props.paymentMethods?.midtrans_enabled && !props.paymentMethods?.manual_enabled;
+});
+
 const openCheckoutModal = (app, months) => {
     checkoutApp.value = app;
     checkoutDuration.value = months;
@@ -642,9 +647,13 @@ const openCheckoutModal = (app, months) => {
     if (props.paymentMethods?.midtrans_enabled) {
         checkoutForm.payment_method = "midtrans";
     } else if (props.paymentMethods?.manual_enabled) {
-        checkoutForm.payment_method = "manual_bank";
+        if (props.paymentMethods?.bank_name) {
+            checkoutForm.payment_method = "manual_bank";
+        } else {
+            checkoutForm.payment_method = "manual_qris";
+        }
     } else {
-        checkoutForm.payment_method = "manual_bank";
+        checkoutForm.payment_method = "";
     }
 
     isCheckoutModalOpen.value = true;
@@ -664,6 +673,17 @@ const closeCheckoutModal = () => {
 
 const submitCheckout = () => {
     checkoutForm.clearErrors();
+
+    const finalAmt = checkoutApp.value 
+        ? calculateFinalAmount(checkoutApp.value.module, checkoutDuration.value) 
+        : 1;
+
+    // Cegah transaksi berbayar jika semua metode pembayaran dinonaktifkan
+    if (finalAmt > 0 && isAllPaymentsDisabled.value) {
+        showToast("Layanan transaksi pembayaran sedang ditutup sementara karena sedang ada perbaikan.", "error");
+        return;
+    }
+
     checkoutForm.post(route("profile.payment.order"), {
         preserveScroll: true,
         forceFormData: true,
@@ -2163,6 +2183,17 @@ const submitDeleteAccount = () => {
                                     </span>
                                 </div>
 
+                                <!-- Notice jika semua metode pembayaran ditutup karena perbaikan -->
+                                <div 
+                                    v-if="isAllPaymentsDisabled"
+                                    class="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-start sm:items-center gap-2.5 text-xs text-amber-900 dark:text-amber-200"
+                                >
+                                    <Wrench class="h-4 w-4 text-amber-600 shrink-0 mt-0.5 sm:mt-0" />
+                                    <span class="text-xs leading-relaxed">
+                                        <strong>Pemberitahuan:</strong> Seluruh saluran transaksi pembayaran saat ini sedang ditutup sementara karena sedang ada pemeliharaan sistem.
+                                    </span>
+                                </div>
+
                                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                                     <div
                                         v-for="tier in currentAppPricingTiers"
@@ -2793,8 +2824,22 @@ const submitDeleteAccount = () => {
                             </div>
                         </div>
 
+                        <!-- Alert jika semua pembayaran dinonaktifkan -->
+                        <div 
+                            v-if="isAllPaymentsDisabled && checkoutCalculation.finalAmount > 0"
+                            class="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-amber-900 dark:text-amber-200 space-y-2 text-xs"
+                        >
+                            <div class="flex items-center gap-2 font-bold text-sm text-amber-700 dark:text-amber-300">
+                                <Wrench class="h-4 w-4 shrink-0 text-amber-600" />
+                                <span>Layanan Pembayaran Sedang Dalam Perbaikan</span>
+                            </div>
+                            <p class="leading-relaxed text-[11px] text-muted-foreground">
+                                Mohon maaf, saat ini seluruh metode pembayaran sedang dinonaktifkan sementara karena sedang ada perbaikan & pemeliharaan sistem. Anda belum dapat melanjutkan transaksi saat ini. Silakan coba kembali beberapa saat lagi.
+                            </p>
+                        </div>
+
                         <!-- Payment Method Selector -->
-                        <div class="space-y-2">
+                        <div v-else-if="!isAllPaymentsDisabled && checkoutCalculation.finalAmount > 0" class="space-y-2">
                             <Label class="text-xs font-bold text-foreground"
                                 >Pilih Metode Pembayaran:</Label
                             >
@@ -3158,6 +3203,16 @@ const submitDeleteAccount = () => {
                                         ? "Mengaktifkan..."
                                         : "Aktivasi Gratis dengan Saldo Referral"
                                 }}</span>
+                            </Button>
+                            <Button
+                                v-else-if="isAllPaymentsDisabled"
+                                type="button"
+                                size="sm"
+                                disabled
+                                class="text-xs font-bold gap-1.5 px-5 bg-muted text-muted-foreground cursor-not-allowed opacity-75 shadow-xs"
+                            >
+                                <Wrench class="h-3.5 w-3.5 text-amber-500" />
+                                <span>Tidak Bisa Lanjut (Sedang Ada Perbaikan)</span>
                             </Button>
                             <Button
                                 v-else

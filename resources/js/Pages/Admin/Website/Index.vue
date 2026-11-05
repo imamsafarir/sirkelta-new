@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import DashboardLayout from '@/Layouts/DashboardLayout.vue';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
@@ -36,7 +36,8 @@ import {
     Upload,
     Eye,
     EyeOff,
-    AlertCircle
+    AlertCircle,
+    AlertTriangle
 } from 'lucide-vue-next';
 import RichTextEditor from '@/Components/RichTextEditor.vue';
 
@@ -210,7 +211,42 @@ const paymentForm = useForm({
 
 const qrisPreview = ref(props.paymentSettings?.payment_qris_image_path || null);
 const showServerKey = ref(false);
-const copiedWebhook = ref(false);
+const copiedField = ref(null);
+
+const originUrl = computed(() => {
+    return typeof window !== 'undefined' ? window.location.origin : '';
+});
+
+const midtransUrls = computed(() => [
+    {
+        key: 'finish_redirect',
+        label: 'Finish Redirect URL',
+        url: `${originUrl.value}/profile?payment=finish`,
+        desc: 'URL tujuan saat pembeli selesai melakukan transaksi di Midtrans Snap agar diarahkan kembali ke akun Sirkelta.',
+        badge: 'Redirection'
+    },
+    {
+        key: 'payment_notification',
+        label: 'Payment Notification URL',
+        url: `${originUrl.value}/api/midtrans/webhook`,
+        desc: 'Endpoint webhook utama untuk menerima notifikasi status pembayaran berhasil, pending, atau expired secara otomatis.',
+        badge: 'Webhook Utama'
+    },
+    {
+        key: 'recurring_notification',
+        label: 'Recurring Payment Notification URL',
+        url: `${originUrl.value}/api/midtrans/webhook`,
+        desc: 'Endpoint webhook untuk notifikasi transaksi berulang / perpanjangan paket otomatis.',
+        badge: 'Recurring'
+    },
+    {
+        key: 'account_linking',
+        label: 'Account Linking Notification URL',
+        url: `${originUrl.value}/api/midtrans/webhook`,
+        desc: 'Endpoint webhook untuk notifikasi penautan akun pembayaran instan (GoPay Tokenization, dsb).',
+        badge: 'Account Linking'
+    }
+]);
 
 const handleQrisFileChange = (e) => {
     const file = e.target.files[0];
@@ -220,20 +256,43 @@ const handleQrisFileChange = (e) => {
     }
 };
 
-const copyWebhookUrl = () => {
-    const url = window.location.origin + '/api/midtrans/webhook';
-    navigator.clipboard.writeText(url);
-    copiedWebhook.value = true;
-    setTimeout(() => {
-        copiedWebhook.value = false;
-    }, 2000);
+const copyUrl = async (url, fieldKey) => {
+    try {
+        if (navigator?.clipboard?.writeText) {
+            await navigator.clipboard.writeText(url);
+        } else {
+            const ta = document.createElement('textarea');
+            ta.value = url;
+            ta.style.position = 'fixed';
+            ta.style.left = '-9999px';
+            document.body.appendChild(ta);
+            ta.focus();
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+        }
+        copiedField.value = fieldKey;
+        setTimeout(() => {
+            if (copiedField.value === fieldKey) {
+                copiedField.value = null;
+            }
+        }, 2000);
+    } catch (err) {
+        console.error('Gagal menyalin URL:', err);
+    }
 };
 
 const savePaymentSettings = () => {
-    paymentForm.post(route('admin.website.payment.update'), {
-        preserveScroll: true,
-        forceFormData: true,
-    });
+    paymentForm
+        .transform((data) => ({
+            ...data,
+            payment_manual_enabled: data.payment_manual_enabled ? 1 : 0,
+            payment_midtrans_enabled: data.payment_midtrans_enabled ? 1 : 0,
+        }))
+        .post(route('admin.website.payment.update'), {
+            preserveScroll: true,
+            forceFormData: true,
+        });
 };
 
 const tabs = [
@@ -368,7 +427,39 @@ const getPublicUrl = (tabId) => {
 
             <!-- TAB: Metode Pembayaran -->
             <div v-else-if="currentTab === 'payment'" class="space-y-6">
+                <!-- Warning jika semua metode pembayaran dinonaktifkan -->
+                <div 
+                    v-if="!paymentForm.payment_manual_enabled && !paymentForm.payment_midtrans_enabled"
+                    class="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-start gap-3 text-amber-900 dark:text-amber-200"
+                >
+                    <AlertTriangle class="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                    <div class="space-y-1">
+                        <h4 class="text-xs sm:text-sm font-bold text-amber-800 dark:text-amber-300">
+                            Seluruh Saluran Pembayaran Sedang Dinonaktifkan
+                        </h4>
+                        <p class="text-xs text-muted-foreground leading-relaxed">
+                            Pengguna saat ini <strong>tidak dapat melanjutkan transaksi pembayaran</strong> di halaman profil karena sistem secara otomatis menampilkan pemberitahuan bahwa layanan sedang dalam perbaikan dan menutup akses pembayaran.
+                        </p>
+                    </div>
+                </div>
+
                 <form @submit.prevent="savePaymentSettings" class="space-y-6">
+                    <!-- Error Notification Banner -->
+                    <div 
+                        v-if="paymentForm.hasErrors" 
+                        class="p-4 bg-destructive/10 border border-destructive/30 rounded-2xl flex items-start gap-3 text-destructive"
+                    >
+                        <AlertCircle class="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                        <div class="space-y-1">
+                            <h4 class="text-xs sm:text-sm font-bold text-destructive">
+                                Gagal Menyimpan Pengaturan Pembayaran
+                            </h4>
+                            <ul class="text-xs list-disc list-inside space-y-0.5">
+                                <li v-for="(err, key) in paymentForm.errors" :key="key">{{ err }}</li>
+                            </ul>
+                        </div>
+                    </div>
+
                     <!-- Manual Payment Card (Transfer Bank & QRIS) -->
                     <Card>
                         <CardHeader class="pb-3 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -413,6 +504,9 @@ const getPublicUrl = (tabId) => {
                                             class="text-xs font-medium"
                                             :disabled="!paymentForm.payment_manual_enabled"
                                         />
+                                        <p v-if="paymentForm.errors.payment_bank_name" class="text-[11px] text-destructive font-medium">
+                                            {{ paymentForm.errors.payment_bank_name }}
+                                        </p>
                                     </div>
 
                                     <div class="space-y-1.5">
@@ -425,6 +519,9 @@ const getPublicUrl = (tabId) => {
                                             class="text-xs font-mono font-medium"
                                             :disabled="!paymentForm.payment_manual_enabled"
                                         />
+                                        <p v-if="paymentForm.errors.payment_bank_account_number" class="text-[11px] text-destructive font-medium">
+                                            {{ paymentForm.errors.payment_bank_account_number }}
+                                        </p>
                                     </div>
 
                                     <div class="space-y-1.5">
@@ -437,6 +534,9 @@ const getPublicUrl = (tabId) => {
                                             class="text-xs font-medium"
                                             :disabled="!paymentForm.payment_manual_enabled"
                                         />
+                                        <p v-if="paymentForm.errors.payment_bank_account_holder" class="text-[11px] text-destructive font-medium">
+                                            {{ paymentForm.errors.payment_bank_account_holder }}
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -461,6 +561,9 @@ const getPublicUrl = (tabId) => {
                                         <p class="text-[11px] text-muted-foreground">
                                             Nama merchant yang tertera pada standar QRIS Nasional (NMID).
                                         </p>
+                                        <p v-if="paymentForm.errors.payment_qris_merchant_name" class="text-[11px] text-destructive font-medium">
+                                            {{ paymentForm.errors.payment_qris_merchant_name }}
+                                        </p>
                                     </div>
 
                                     <div class="space-y-1.5">
@@ -483,6 +586,9 @@ const getPublicUrl = (tabId) => {
                                                 />
                                                 <p class="text-[11px] text-muted-foreground">
                                                     Maksimal 2MB. Gambar akan ditampilkan agar pembeli bisa scan dari aplikasi bank / e-wallet.
+                                                </p>
+                                                <p v-if="paymentForm.errors.qris_image" class="text-[11px] text-destructive font-medium">
+                                                    {{ paymentForm.errors.qris_image }}
                                                 </p>
                                             </div>
                                         </div>
@@ -560,10 +666,34 @@ const getPublicUrl = (tabId) => {
                                         </div>
                                     </label>
                                 </div>
+                                <p v-if="paymentForm.errors.payment_midtrans_mode" class="text-[11px] text-destructive font-medium">
+                                    {{ paymentForm.errors.payment_midtrans_mode }}
+                                </p>
                             </div>
 
-                            <!-- API Keys -->
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <!-- API Keys & Credentials: Merchant ID, Client Key, Signature Secret Key -->
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div class="space-y-1.5">
+                                    <Label for="merchant_id" class="text-xs font-semibold flex items-center gap-1.5">
+                                        <Building2 class="h-3.5 w-3.5 text-muted-foreground" />
+                                        <span>Merchant ID</span>
+                                    </Label>
+                                    <Input
+                                        id="merchant_id"
+                                        v-model="paymentForm.payment_midtrans_merchant_id"
+                                        type="text"
+                                        placeholder="Contoh: G123456789 atau M123456"
+                                        class="text-xs font-mono font-medium"
+                                        :disabled="!paymentForm.payment_midtrans_enabled"
+                                    />
+                                    <p class="text-[11px] text-muted-foreground">
+                                        Merchant ID unik tertera di pojok kiri atas Dashboard Midtrans.
+                                    </p>
+                                    <p v-if="paymentForm.errors.payment_midtrans_merchant_id" class="text-[11px] text-destructive font-medium">
+                                        {{ paymentForm.errors.payment_midtrans_merchant_id }}
+                                    </p>
+                                </div>
+
                                 <div class="space-y-1.5">
                                     <Label for="client_key" class="text-xs font-semibold flex items-center gap-1.5">
                                         <Key class="h-3.5 w-3.5 text-muted-foreground" />
@@ -578,14 +708,17 @@ const getPublicUrl = (tabId) => {
                                         :disabled="!paymentForm.payment_midtrans_enabled"
                                     />
                                     <p class="text-[11px] text-muted-foreground">
-                                        Dapat dilihat di Dashboard Midtrans > Settings > Access Keys.
+                                        Diperoleh dari Dashboard Midtrans > Settings > Access Keys (Client Key).
+                                    </p>
+                                    <p v-if="paymentForm.errors.payment_midtrans_client_key" class="text-[11px] text-destructive font-medium">
+                                        {{ paymentForm.errors.payment_midtrans_client_key }}
                                     </p>
                                 </div>
 
                                 <div class="space-y-1.5">
                                     <Label for="server_key" class="text-xs font-semibold flex items-center gap-1.5">
                                         <Key class="h-3.5 w-3.5 text-amber-500" />
-                                        <span>Server Key (Rahasia)</span>
+                                        <span>Signature Secret Key (Server Key)</span>
                                     </Label>
                                     <div class="relative">
                                         <Input
@@ -599,52 +732,72 @@ const getPublicUrl = (tabId) => {
                                         <button
                                             type="button"
                                             @click="showServerKey = !showServerKey"
-                                            class="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                            class="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                                            title="Tampilkan / sembunyikan key"
                                         >
                                             <component :is="showServerKey ? EyeOff : Eye" class="h-4 w-4" />
                                         </button>
                                     </div>
                                     <p class="text-[11px] text-muted-foreground">
-                                        Disimpan terenkripsi dan hanya dipakai oleh server backend.
+                                        Kunci rahasia untuk otentikasi server & verifikasi signature transaksi Midtrans.
+                                    </p>
+                                    <p v-if="paymentForm.errors.payment_midtrans_server_key" class="text-[11px] text-destructive font-medium">
+                                        {{ paymentForm.errors.payment_midtrans_server_key }}
                                     </p>
                                 </div>
                             </div>
 
-                            <div class="space-y-1.5">
-                                <Label for="merchant_id" class="text-xs font-semibold">Merchant ID (Opsional)</Label>
-                                <Input
-                                    id="merchant_id"
-                                    v-model="paymentForm.payment_midtrans_merchant_id"
-                                    type="text"
-                                    placeholder="Contoh: G123456789"
-                                    class="text-xs font-mono max-w-sm"
-                                    :disabled="!paymentForm.payment_midtrans_enabled"
-                                />
-                            </div>
-
-                            <!-- Webhook URL Configuration Guide -->
-                            <div class="bg-muted/40 border border-border/80 rounded-xl p-4 space-y-2">
-                                <div class="flex items-center justify-between gap-2">
-                                    <div class="text-xs font-bold text-foreground flex items-center gap-1.5">
-                                        <AlertCircle class="h-3.5 w-3.5 text-indigo-500" />
-                                        <span>Pengaturan Webhook / Notification URL di Midtrans</span>
+                            <!-- Midtrans Configuration URLs (Settings > Configuration) -->
+                            <div class="border border-border/80 rounded-2xl bg-muted/20 p-4 sm:p-5 space-y-4">
+                                <div class="space-y-1">
+                                    <div class="text-xs sm:text-sm font-bold text-foreground flex items-center gap-2">
+                                        <AlertCircle class="h-4 w-4 text-indigo-500 shrink-0" />
+                                        <span>Konfigurasi URL Callback & Notifikasi Midtrans</span>
                                     </div>
-                                    <Button 
-                                        type="button" 
-                                        variant="outline" 
-                                        size="sm" 
-                                        class="h-7 text-[11px] gap-1 px-2.5"
-                                        @click="copyWebhookUrl"
-                                    >
-                                        <component :is="copiedWebhook ? Check : Copy" class="h-3 w-3 text-emerald-600" />
-                                        <span>{{ copiedWebhook ? 'Tersalin' : 'Salin URL' }}</span>
-                                    </Button>
+                                    <p class="text-xs text-muted-foreground leading-relaxed">
+                                        Salin masing-masing URL di bawah ini lalu tempelkan ke akun Midtrans Anda pada menu <strong>Dashboard Midtrans > Settings > Configuration</strong>:
+                                    </p>
                                 </div>
-                                <p class="text-[11px] text-muted-foreground leading-relaxed">
-                                    Salin URL di bawah ini lalu tempelkan pada <strong>Dashboard Midtrans > Settings > Configuration > Payment Notification URL</strong>:
-                                </p>
-                                <div class="p-2.5 bg-background border rounded-lg font-mono text-xs text-primary select-all break-all">
-                                    {{ typeof window !== 'undefined' ? window.location.origin : '' }}/api/midtrans/webhook
+
+                                <div class="grid grid-cols-1 gap-3.5 pt-1">
+                                    <div 
+                                        v-for="item in midtransUrls" 
+                                        :key="item.key"
+                                        class="p-3.5 bg-card border rounded-xl shadow-2xs space-y-2 hover:border-indigo-500/40 transition-colors"
+                                    >
+                                        <div class="flex items-center justify-between gap-2">
+                                            <div class="flex items-center gap-2 flex-wrap">
+                                                <span class="text-xs font-bold text-foreground">{{ item.label }}</span>
+                                                <Badge variant="outline" class="text-[10px] py-0 px-1.5 font-semibold text-muted-foreground">
+                                                    {{ item.badge }}
+                                                </Badge>
+                                            </div>
+                                            <Button 
+                                                type="button" 
+                                                variant="outline" 
+                                                size="sm" 
+                                                class="h-7 text-xs gap-1.5 px-3 rounded-lg border-indigo-200 dark:border-indigo-900/60 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 shrink-0"
+                                                @click="copyUrl(item.url, item.key)"
+                                            >
+                                                <component 
+                                                    :is="copiedField === item.key ? Check : Copy" 
+                                                    class="h-3.5 w-3.5" 
+                                                    :class="copiedField === item.key ? 'text-emerald-600' : 'text-indigo-600 dark:text-indigo-400'" 
+                                                />
+                                                <span :class="copiedField === item.key ? 'text-emerald-600 font-bold' : ''">
+                                                    {{ copiedField === item.key ? 'Tersalin!' : 'Salin URL' }}
+                                                </span>
+                                            </Button>
+                                        </div>
+                                        
+                                        <p class="text-[11px] text-muted-foreground leading-normal">
+                                            {{ item.desc }}
+                                        </p>
+
+                                        <div class="flex items-center gap-2 bg-muted/50 border rounded-lg px-3 py-2 font-mono text-xs text-primary select-all break-all overflow-x-auto">
+                                            <span class="flex-1">{{ item.url }}</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </CardContent>

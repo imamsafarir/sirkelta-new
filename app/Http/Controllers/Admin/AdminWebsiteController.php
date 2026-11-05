@@ -84,6 +84,11 @@ class AdminWebsiteController extends Controller
      */
     public function updatePaymentSettings(Request $request): RedirectResponse
     {
+        $request->merge([
+            'payment_manual_enabled' => filter_var($request->input('payment_manual_enabled'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false,
+            'payment_midtrans_enabled' => filter_var($request->input('payment_midtrans_enabled'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false,
+        ]);
+
         $validated = $request->validate([
             'payment_manual_enabled' => ['required', 'boolean'],
             'payment_bank_name' => ['nullable', 'string', 'max:100'],

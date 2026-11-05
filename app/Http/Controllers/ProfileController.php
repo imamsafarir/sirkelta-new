@@ -224,6 +224,7 @@ class ProfileController extends Controller
                 'midtrans_enabled' => (bool) ((int) WebsiteSetting::get('payment_midtrans_enabled', '0')),
                 'midtrans_mode' => WebsiteSetting::get('payment_midtrans_mode', 'sandbox'),
                 'midtrans_client_key' => WebsiteSetting::get('payment_midtrans_client_key', ''),
+                'midtrans_merchant_id' => WebsiteSetting::get('payment_midtrans_merchant_id', ''),
             ],
             'status' => session('status'),
             'flash' => [
@@ -711,6 +712,24 @@ class ProfileController extends Controller
 
         $orderNumber = PaymentOrder::generateOrderNumber();
         $appName = $module === 'keuangan' ? 'Sirkelta Keuangan Pro' : 'Sirkelta WaSender Pro';
+
+        // Validasi ketersediaan metode pembayaran jika transaksi berbayar
+        if ($finalAmount > 0) {
+            $manualEnabled = (bool) ((int) WebsiteSetting::get('payment_manual_enabled', '1'));
+            $midtransEnabled = (bool) ((int) WebsiteSetting::get('payment_midtrans_enabled', '0'));
+
+            if (! $manualEnabled && ! $midtransEnabled) {
+                return back()->with('error', 'Layanan transaksi pembayaran saat ini sedang dinonaktifkan sementara karena sedang ada perbaikan. Mohon coba beberapa saat lagi.');
+            }
+
+            if ($method === 'midtrans' && ! $midtransEnabled) {
+                return back()->with('error', 'Metode pembayaran otomatis Midtrans sedang dinonaktifkan karena sedang ada perbaikan.');
+            }
+
+            if (str_starts_with($method, 'manual_') && ! $manualEnabled) {
+                return back()->with('error', 'Metode pembayaran transfer manual sedang dinonaktifkan karena sedang ada perbaikan.');
+            }
+        }
 
         // If 100% covered by referral discount, auto approve immediately
         if ($finalAmount <= 0) {

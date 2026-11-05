@@ -9,12 +9,31 @@ import PwaInstallBanner from './components/pwa/PwaInstallBanner.vue';
 import { initInertiaInterceptor } from './lib/smartQueue';
 import { initPwa } from './lib/pwaManager';
 import { initOfflineSyncListener } from './lib/offlineStorage';
+import { initOfflinePrewarmer } from './lib/offlinePrewarmer';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Sirkelta';
 
 initInertiaInterceptor(router);
 initPwa();
 initOfflineSyncListener();
+initOfflinePrewarmer();
+
+// Pre-cache full HTML document upon Inertia navigation for seamless offline reload
+router.on('navigate', () => {
+    if (typeof window !== 'undefined' && 'caches' in window && navigator.onLine) {
+        const currentUrl = window.location.href;
+        fetch(currentUrl, {
+            headers: { 'Accept': 'text/html' },
+            credentials: 'same-origin',
+        }).then((res) => {
+            if (res && res.status === 200) {
+                caches.open('sirkelta-pages-v2').then((cache) => {
+                    cache.put(currentUrl, res);
+                });
+            }
+        }).catch(() => {});
+    }
+});
 
 createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),

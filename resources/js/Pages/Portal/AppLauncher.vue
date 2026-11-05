@@ -33,6 +33,9 @@ const props = defineProps({
 });
 
 const logout = () => {
+    if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: 'PURGE_AUTH_CACHE' });
+    }
     router.post(route('logout'));
 };
 
@@ -50,8 +53,8 @@ const getInitials = (name) => {
     <Head title="Pilih Aplikasi - Sirkelta" />
 
     <div class="min-h-screen bg-muted/20 text-foreground flex flex-col font-sans selection:bg-primary selection:text-primary-foreground">
-        <!-- Top Navbar -->
-        <header class="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <!-- Top Navbar with Safe Area -->
+        <header class="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 pt-safe">
             <div class="container mx-auto flex h-16 items-center justify-between px-4 sm:px-8 max-w-5xl">
                 <!-- Brand -->
                 <div class="flex items-center gap-3">

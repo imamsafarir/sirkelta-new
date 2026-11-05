@@ -45,7 +45,32 @@ test('superadmin can update payment method settings', function () {
         ->and(WebsiteSetting::get('payment_bank_account_number'))->toBe('1230004567890')
         ->and(WebsiteSetting::get('payment_midtrans_enabled'))->toBe('1')
         ->and(WebsiteSetting::get('payment_midtrans_mode'))->toBe('sandbox')
-        ->and(WebsiteSetting::get('payment_midtrans_client_key'))->toBe('SB-Mid-client-sample-key');
+        ->and(WebsiteSetting::get('payment_midtrans_client_key'))->toBe('SB-Mid-client-sample-key')
+        ->and(WebsiteSetting::get('payment_midtrans_server_key'))->toBe('SB-Mid-server-sample-key')
+        ->and(WebsiteSetting::get('payment_midtrans_merchant_id'))->toBe('G12345678');
+});
+
+test('superadmin can update payment settings with stringified booleans from formdata', function () {
+    $superadmin = User::where('email', 'superadmin@sirkelta.test')->first();
+
+    $response = $this->actingAs($superadmin)->post(route('admin.website.payment.update'), [
+        'payment_manual_enabled' => 'false',
+        'payment_midtrans_enabled' => 'true',
+        'payment_midtrans_mode' => 'production',
+        'payment_midtrans_client_key' => 'Mid-client-live-key',
+        'payment_midtrans_server_key' => 'Mid-server-live-key',
+        'payment_midtrans_merchant_id' => 'M987654321',
+    ]);
+
+    $response->assertRedirect();
+    $response->assertSessionHas('success');
+
+    expect(WebsiteSetting::get('payment_manual_enabled'))->toBe('0')
+        ->and(WebsiteSetting::get('payment_midtrans_enabled'))->toBe('1')
+        ->and(WebsiteSetting::get('payment_midtrans_mode'))->toBe('production')
+        ->and(WebsiteSetting::get('payment_midtrans_client_key'))->toBe('Mid-client-live-key')
+        ->and(WebsiteSetting::get('payment_midtrans_server_key'))->toBe('Mid-server-live-key')
+        ->and(WebsiteSetting::get('payment_midtrans_merchant_id'))->toBe('M987654321');
 });
 
 test('non-superadmin cannot update payment settings or view payment management', function () {
@@ -262,4 +287,22 @@ test('midtrans webhook automatically marks order as paid with valid signature', 
     expect($sub)->not->toBeNull()
         ->and($sub->plan)->toBe('pro')
         ->and($sub->status)->toBe('active');
+});
+
+test('user cannot create paid payment order when all payment methods are disabled', function () {
+    WebsiteSetting::set('payment_manual_enabled', '0');
+    WebsiteSetting::set('payment_midtrans_enabled', '0');
+
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user)->post(route('profile.payment.order'), [
+        'module' => 'keuangan',
+        'duration_months' => 1,
+        'payment_method' => 'manual_bank',
+    ]);
+
+    $response->assertRedirect();
+    $response->assertSessionHas('error', 'Layanan transaksi pembayaran saat ini sedang dinonaktifkan sementara karena sedang ada perbaikan. Mohon coba beberapa saat lagi.');
+
+    expect(PaymentOrder::where('user_id', $user->id)->count())->toBe(0);
 });

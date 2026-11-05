@@ -53,7 +53,7 @@ const onWindowResize = () => {
     const height = canvasContainer.value.clientHeight;
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
-    renderer.setSize(width, height);
+    renderer.setSize(width, height, false);
 };
 
 onMounted(() => {
@@ -72,6 +72,13 @@ onMounted(() => {
     renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: 'high-performance' });
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.domElement.style.position = 'absolute';
+    renderer.domElement.style.top = '0';
+    renderer.domElement.style.left = '0';
+    renderer.domElement.style.width = '100%';
+    renderer.domElement.style.height = '100%';
+    renderer.domElement.style.display = 'block';
+    renderer.domElement.style.pointerEvents = 'none';
     canvasContainer.value.appendChild(renderer.domElement);
 
     // 3. Elegant Wave Geometry (Structured, Clean Particle Grid)
@@ -200,18 +207,18 @@ onBeforeUnmount(() => {
 <template>
     <Head title="Sirkelta - Ekosistem Aplikasi Terpadu" />
 
-    <div class="min-h-screen bg-background text-foreground flex flex-col relative overflow-hidden select-none">
+    <div class="min-h-screen min-h-[100dvh] bg-background text-foreground flex flex-col relative overflow-x-hidden select-none">
         <!-- 3D Three.js Fluid Digital Waves Background -->
         <div 
             ref="canvasContainer" 
-            class="absolute inset-0 z-0 pointer-events-none opacity-70 dark:opacity-85 [mask-image:radial-gradient(ellipse_80%_65%_at_50%_60%,#000_40%,transparent_100%)]"
+            class="absolute inset-0 z-0 pointer-events-none overflow-hidden opacity-70 dark:opacity-85 [mask-image:radial-gradient(ellipse_80%_65%_at_50%_60%,#000_40%,transparent_100%)]"
         ></div>
 
         <!-- Soft Ambient Accent Glow -->
-        <div class="absolute -top-32 left-1/2 -translate-x-1/2 w-[700px] h-[450px] bg-primary/10 rounded-full blur-[120px] pointer-events-none"></div>
+        <div class="absolute -top-32 left-1/2 -translate-x-1/2 w-full max-w-[700px] h-[450px] bg-primary/10 rounded-full blur-[120px] pointer-events-none"></div>
 
-        <!-- Sticky Clean Navbar -->
-        <header class="relative z-20 w-full border-b bg-background/80 backdrop-blur-md">
+        <!-- Sticky Clean Navbar with Safe Area -->
+        <header class="relative z-20 w-full border-b bg-background/80 backdrop-blur-md pt-safe">
             <div class="container mx-auto flex h-16 items-center justify-between px-4 sm:px-8 max-w-6xl">
                 <!-- Brand -->
                 <Link :href="route('home')" class="flex items-center gap-3 hover:opacity-90 transition-opacity">
@@ -341,8 +348,8 @@ onBeforeUnmount(() => {
             </div>
         </main>
 
-        <!-- Footer -->
-        <footer class="relative z-10 py-8 text-center text-xs text-muted-foreground border-t bg-background/80 backdrop-blur-md">
+        <!-- Footer with Safe Area -->
+        <footer class="relative z-10 py-8 pb-[calc(2rem+env(safe-area-inset-bottom,0px))] text-center text-xs text-muted-foreground border-t bg-background/80 backdrop-blur-md">
             <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div class="flex items-center gap-2">
                     <img src="/images/logo.png" alt="Logo" class="h-5 w-5 rounded-sm object-contain" />

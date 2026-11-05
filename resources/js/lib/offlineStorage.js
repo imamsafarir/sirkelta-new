@@ -32,12 +32,14 @@ function openDatabase() {
 /**
  * Menyimpan catatan transaksi baru saat koneksi offline
  */
-export async function saveOfflineTransaction(payload) {
+export async function saveOfflineTransaction(payload, endpoint = '/keuangan/transactions', method = 'POST') {
     const db = await openDatabase();
     const offlineId = 'offline_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     
     const record = {
         offline_id: offlineId,
+        endpoint: endpoint,
+        method: method,
         payload: { ...payload },
         status: 'pending_sync',
         created_at: new Date().toISOString(),
@@ -48,7 +50,12 @@ export async function saveOfflineTransaction(payload) {
         const store = tx.objectStore(STORE_NAME);
         const req = store.add(record);
 
-        req.onsuccess = () => resolve(record);
+        req.onsuccess = () => {
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('offline-queue-updated'));
+            }
+            resolve(record);
+        };
         req.onerror = () => reject(req.error);
     });
 }
@@ -82,7 +89,32 @@ export async function removeOfflineTransaction(offlineId) {
         const store = tx.objectStore(STORE_NAME);
         const req = store.delete(offlineId);
 
-        req.onsuccess = () => resolve(true);
+        req.onsuccess = () => {
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('offline-queue-updated'));
+            }
+            resolve(true);
+        };
+        req.onerror = () => reject(req.error);
+    });
+}
+
+/**
+ * Menghapus seluruh antrean transaksi offline
+ */
+export async function clearAllOfflineTransactions() {
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        const req = store.clear();
+
+        req.onsuccess = () => {
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('offline-queue-updated'));
+            }
+            resolve(true);
+        };
         req.onerror = () => reject(req.error);
     });
 }
@@ -131,8 +163,11 @@ export async function syncPendingTransactions(onProgress = null) {
 
     for (const item of pending) {
         try {
-            const response = await fetch('/keuangan/transactions', {
-                method: 'POST',
+            const targetEndpoint = item.endpoint || '/keuangan/transactions';
+            const targetMethod = item.method || 'POST';
+
+            const response = await fetch(targetEndpoint, {
+                method: targetMethod,
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
