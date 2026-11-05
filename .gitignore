@@ -13,7 +13,7 @@ node_modules/
 extension/node_modules/
 
 # Application Builds
-/public/build/
+# /public/build/
 /public/hot
 /public/storage
 /public/fonts-manifest.dev.json
