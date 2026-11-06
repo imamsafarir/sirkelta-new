@@ -104,6 +104,14 @@ const props = defineProps({
 
 const page = usePage();
 
+const isOnboarding = computed(() => {
+    if (typeof window !== "undefined") {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.has("onboarding");
+    }
+    return false;
+});
+
 const activeSection = ref("account");
 const activeTab = activeSection;
 
@@ -992,6 +1000,20 @@ const submitDeleteAccount = () => {
         title="Profil & Keamanan"
     >
         <div class="space-y-6 max-w-5xl mx-auto pb-12">
+            <!-- Onboarding Guidance Banner -->
+            <div
+                v-if="isOnboarding"
+                class="p-4 rounded-xl border border-primary/30 bg-primary/10 flex items-start gap-3 shadow-xs animate-in fade-in"
+            >
+                <Sparkles class="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                <div class="text-xs sm:text-sm">
+                    <p class="font-bold text-foreground">Langkah Pengaktifan Fitur: Lengkapi Data Profil</p>
+                    <p class="text-muted-foreground text-[11px] sm:text-xs mt-0.5 leading-relaxed">
+                        Silakan periksa nama Anda dan lengkapi nomor telepon WhatsApp di bawah ini agar integrasi notifikasi, keuangan, dan seluruh fitur Sirkelta dapat diaktifkan dan digunakan secara penuh.
+                    </p>
+                </div>
+            </div>
+
             <!-- Header Bar & Quick Navigation -->
             <div class="space-y-4 pb-2 border-b">
                 <div

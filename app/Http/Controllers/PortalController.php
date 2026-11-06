@@ -18,10 +18,10 @@ class PortalController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        // If user only has access to exactly 1 module and no admin access, bypass portal and go directly to that dashboard
+        // If user only has access to exactly 1 module and no admin access, bypass portal and go directly to that dashboard (unless onboarding)
         $accessible = $user->accessibleModules();
         $hasAdminAccess = $user->hasRole('superadmin') || $user->hasAnyRole(['admin_web', 'admin_keuangan', 'admin_wasender']);
-        if (count($accessible) === 1 && ! $hasAdminAccess) {
+        if (count($accessible) === 1 && ! $hasAdminAccess && ! $request->has('onboarding')) {
             return redirect($user->resolveDefaultDashboardRoute());
         }
         $isSuperadmin = $user->hasRole('superadmin');
@@ -70,9 +70,11 @@ class PortalController extends Controller
 
         return Inertia::render('Portal/AppLauncher', [
             'apps' => $apps,
+            'showOnboarding' => (bool) $request->has('onboarding'),
             'user' => [
                 'name' => $user->name,
                 'email' => $user->email,
+                'phone' => $user->phone ?? null,
                 'roles' => $user->getRoleNames(),
             ],
         ]);

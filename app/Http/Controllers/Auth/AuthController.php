@@ -3,15 +3,20 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\PendingRegistration;
 use App\Models\ReferralLog;
 use App\Models\User;
 use App\Models\WebsiteSetting;
+use App\Notifications\AccountActivationNotification;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -68,17 +73,18 @@ class AuthController extends Controller
     }
 
     /**
-     * Show the registration view.
+     * Show the registration view (email-only entry).
      */
     public function showRegister(Request $request): Response
     {
         return Inertia::render('Auth/Register', [
             'referralCode' => $request->query('ref'),
+            'activationSentEmail' => session('activation_sent'),
         ]);
     }
 
     /**
-     * Handle an incoming registration request.
+     * Handle the initial registration request: validate email and send activation link.
      */
     public function register(Request $request): RedirectResponse
     {
@@ -89,10 +95,7 @@ class AuthController extends Controller
         }
 
         $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'username' => ['required', 'string', 'alpha_dash', 'min:3', 'max:50', 'unique:'.User::class],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
-            'password' => ['required', 'confirmed', Password::defaults()],
             'referral_code' => ['nullable', 'string', function ($attribute, $value, $fail) {
                 if (! empty($value)) {
                     $val = strtolower(trim((string) $value));
@@ -104,8 +107,76 @@ class AuthController extends Controller
                     }
                 }
             }],
-            'initial_modules' => ['array', 'min:1'],
-            'initial_modules.*' => ['string', 'in:keuangan,wasender'],
+        ], [
+            'email.required' => 'Alamat email wajib diisi.',
+            'email.email' => 'Format alamat email tidak valid.',
+            'email.unique' => 'Alamat email ini sudah terdaftar. Silakan langsung masuk ke akun Anda.',
+        ]);
+
+        $email = strtolower(trim((string) $request->email));
+        $referralCode = $request->filled('referral_code') ? strtolower(trim((string) $request->referral_code)) : null;
+
+        $token = Str::random(64);
+
+        PendingRegistration::updateOrCreate(
+            ['email' => $email],
+            [
+                'token' => hash('sha256', $token),
+                'referral_code' => $referralCode,
+                'expires_at' => now()->addHours(24),
+            ]
+        );
+
+        $activationUrl = URL::temporarySignedRoute(
+            'register.complete',
+            now()->addHours(24),
+            [
+                'token' => $token,
+                'email' => $email,
+            ]
+        );
+
+        Notification::route('mail', $email)->notify(new AccountActivationNotification($activationUrl, $email));
+
+        return back()
+            ->with('activation_sent', $email)
+            ->with('success', 'Tautan aktivasi berhasil dikirim! Silakan periksa kotak masuk atau folder spam email Anda.');
+    }
+
+    /**
+     * Show the view to complete registration (set name, username, and password).
+     */
+    public function showCompleteRegistration(Request $request): Response|RedirectResponse
+    {
+        $email = strtolower(trim((string) $request->query('email', '')));
+        $token = (string) $request->query('token', '');
+
+        $pending = PendingRegistration::where('email', $email)->first();
+
+        if (! $pending || $pending->isExpired() || ! hash_equals($pending->token, hash('sha256', $token))) {
+            return redirect()->route('register')->withErrors([
+                'email' => 'Tautan aktivasi tidak valid atau telah kedaluwarsa. Silakan masukkan email Anda kembali untuk menerima tautan baru.',
+            ]);
+        }
+
+        return Inertia::render('Auth/CompleteRegistration', [
+            'email' => $email,
+            'token' => $token,
+            'referralCode' => $pending->referral_code,
+        ]);
+    }
+
+    /**
+     * Finalize the registration: create user, assign role, login and direct to onboarding.
+     */
+    public function completeRegistration(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
+            'token' => ['required', 'string'],
+            'name' => ['required', 'string', 'max:255'],
+            'username' => ['required', 'string', 'alpha_dash', 'min:3', 'max:50', 'unique:'.User::class],
+            'password' => ['required', 'confirmed', Password::defaults()],
         ], [
             'name.required' => 'Nama lengkap wajib diisi.',
             'username.required' => 'Username wajib diisi.',
@@ -113,36 +184,43 @@ class AuthController extends Controller
             'username.min' => 'Username minimal harus 3 karakter.',
             'username.max' => 'Username maksimal 50 karakter.',
             'username.unique' => 'Username ini sudah digunakan oleh pengguna lain.',
-            'email.required' => 'Alamat email wajib diisi.',
-            'email.email' => 'Format alamat email tidak valid.',
-            'email.unique' => 'Alamat email ini sudah terdaftar.',
             'password.required' => 'Kata sandi wajib diisi.',
             'password.confirmed' => 'Konfirmasi kata sandi tidak cocok.',
             'password.min' => 'Kata sandi minimal harus 8 karakter.',
-            'initial_modules.min' => 'Pilih minimal satu modul aplikasi.',
         ]);
+
+        $email = strtolower(trim((string) $request->email));
+        $token = (string) $request->token;
+
+        $pending = PendingRegistration::where('email', $email)->first();
+
+        if (! $pending || $pending->isExpired() || ! hash_equals($pending->token, hash('sha256', $token))) {
+            return redirect()->route('register')->withErrors([
+                'email' => 'Tautan aktivasi tidak valid atau telah kedaluwarsa. Silakan lakukan pendaftaran ulang.',
+            ]);
+        }
 
         $username = strtolower(trim((string) $request->username));
 
-        // Check if user was referred by another user (matching username or legacy code)
+        // Check referral
         $referrer = null;
-        if ($request->filled('referral_code')) {
-            $refInput = strtolower(trim((string) $request->referral_code));
+        if (! empty($pending->referral_code)) {
+            $refInput = strtolower(trim((string) $pending->referral_code));
             $referrer = User::where('username', $refInput)
                 ->orWhere('referral_code', $refInput)
                 ->first();
         }
 
         $user = User::create([
-            'name' => $request->name,
+            'name' => trim((string) $request->name),
             'username' => $username,
-            'email' => $request->email,
+            'email' => $email,
             'password' => Hash::make($request->password),
+            'email_verified_at' => now(), // Terverifikasi langsung karena diklik dari email
             'referral_code' => $username,
             'referred_by' => $referrer?->id,
         ]);
 
-        // If referred by someone, record reward discount log for referrer
         if ($referrer) {
             $rewardAmount = (float) WebsiteSetting::get('referral_discount_amount', 25000);
             ReferralLog::create([
@@ -153,29 +231,20 @@ class AuthController extends Controller
             ]);
         }
 
-        // Assign chosen module roles (default to user_keuangan if none selected)
-        $selectedModules = $request->input('initial_modules', ['keuangan']);
-        $rolesToAssign = [];
+        // Berikan role default (keuangan)
+        $user->assignRole('user_keuangan');
 
-        if (in_array('keuangan', $selectedModules, true)) {
-            $rolesToAssign[] = 'user_keuangan';
-        }
-        if (in_array('wasender', $selectedModules, true)) {
-            $rolesToAssign[] = 'user_wasender';
-        }
+        // Hapus pending registration
+        $pending->delete();
 
-        if (! empty($rolesToAssign)) {
-            $user->syncRoles($rolesToAssign);
-        } else {
-            $user->assignRole('user_keuangan');
-        }
-
+        // Otomatis login
         Auth::login($user);
         $request->session()->regenerate();
 
         event(new Registered($user));
 
-        return redirect()->route('verification.notice')->with('success', 'Akun berhasil dibuat! Silakan verifikasi email Anda untuk memilih aplikasi.');
+        return redirect()->route('portal', ['onboarding' => 1])
+            ->with('success', 'Akun berhasil diaktifkan! Selamat datang di Sirkelta.');
     }
 
     /**

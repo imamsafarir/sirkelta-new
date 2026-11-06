@@ -1,6 +1,8 @@
 <?php
 
+use App\Models\PendingRegistration;
 use App\Models\User;
+use App\Notifications\AccountActivationNotification;
 use App\Notifications\EmailChangeVerificationNotification;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -169,24 +171,44 @@ test('email change requires valid otp sent to current email and triggers verific
     expect(Cache::has('email_change_otp_'.$user->id))->toBeFalse();
 });
 
-test('registration dispatches registered event and redirects to verification prompt', function () {
+test('registration sends activation notification and completion finalizes verified account', function () {
+    Notification::fake();
     Event::fake([Registered::class]);
 
+    // Langkah 1: Input email di form registrasi awal
     $response = $this->post(route('register.attempt'), [
-        'name' => 'New Customer',
-        'username' => 'brand_new_user',
         'email' => 'new_customer@example.com',
-        'password' => 'Password123!',
-        'password_confirmation' => 'Password123!',
-        'initial_modules' => ['keuangan'],
     ]);
 
-    $response->assertRedirect(route('verification.notice'));
+    $response->assertSessionHas('activation_sent', 'new_customer@example.com');
+    Notification::assertSentOnDemand(AccountActivationNotification::class);
+
+    $pending = PendingRegistration::where('email', 'new_customer@example.com')->first();
+    expect($pending)->not->toBeNull();
+
+    // Generate token matching the pending record
+    $token = 'test-token-12345678901234567890123456789012';
+    $pending->update(['token' => hash('sha256', $token)]);
+
+    // Langkah 2: Selesaikan registrasi dengan username dan password
+    $completeResponse = $this->post(route('register.complete.submit'), [
+        'email' => 'new_customer@example.com',
+        'token' => $token,
+        'name' => 'New Customer',
+        'username' => 'brand_new_user',
+        'password' => 'Password123!',
+        'password_confirmation' => 'Password123!',
+    ]);
+
+    $completeResponse->assertRedirect(route('portal', ['onboarding' => 1]));
     Event::assertDispatched(Registered::class);
 
     $newUser = User::where('email', 'new_customer@example.com')->first();
     expect($newUser)->not->toBeNull();
-    expect($newUser->hasVerifiedEmail())->toBeFalse();
+    expect($newUser->hasVerifiedEmail())->toBeTrue();
+    expect(auth()->check())->toBeTrue();
+    expect(auth()->id())->toBe($newUser->id);
+    expect(PendingRegistration::where('email', 'new_customer@example.com')->exists())->toBeFalse();
 });
 
 test('unverified user cannot access portal or module dashboards and is redirected to verification notice', function () {

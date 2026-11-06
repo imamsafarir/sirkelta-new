@@ -21,7 +21,7 @@ use Modules\WaSender\Models\ExtensionSession;
 use Modules\WaSender\Models\MessageTemplate;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'username', 'email', 'password', 'referral_code', 'referred_by', 'last_module', 'monthly_budget', 'email_changed_at'])]
+#[Fillable(['name', 'username', 'email', 'phone', 'password', 'referral_code', 'referred_by', 'last_module', 'monthly_budget', 'email_verified_at', 'email_changed_at'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements MustVerifyEmail
 {

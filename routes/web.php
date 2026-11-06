@@ -45,6 +45,8 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:auth')->name('login.attempt');
     Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
     Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:auth')->name('register.attempt');
+    Route::get('/register/complete', [AuthController::class, 'showCompleteRegistration'])->middleware('signed')->name('register.complete');
+    Route::post('/register/complete', [AuthController::class, 'completeRegistration'])->name('register.complete.submit');
 });
 
 // Email Verification Notice & Handlers
