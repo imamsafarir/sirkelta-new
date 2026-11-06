@@ -27,7 +27,7 @@ class EnsureIdempotentRequest
         }
 
         // Pengecualian webhook pihak ketiga (sudah memiliki mekanisme verifikasi sendiri)
-        if ($request->is('api/midtrans/*') || $request->is('webhooks/*')) {
+        if ($request->is('api/midtrans/*') || $request->is('api/midtrans*') || $request->is('webhooks/*')) {
             return $next($request);
         }
 

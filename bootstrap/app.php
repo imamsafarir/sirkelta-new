@@ -26,6 +26,9 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->validateCsrfTokens(except: [
+            'api/midtrans/webhook',
+            'api/midtrans/webhook/*',
+            'api/midtrans/*',
             '/api/midtrans/webhook',
             'extension-auth/*',
         ]);
@@ -35,7 +38,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,
             'extension.auth' => EnsureExtensionToken::class,
-            'extension.auth' => \Modules\WaSender\Http\Middleware\EnsureExtensionToken::class,
+            'extension.auth' => EnsureExtensionToken::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

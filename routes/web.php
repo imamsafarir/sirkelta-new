@@ -121,4 +121,4 @@ Route::middleware('auth')->group(function () {
 });
 
 // Midtrans Payment Gateway Webhook Notification Endpoint (External Public Access)
-Route::post('/api/midtrans/webhook', [ProfileController::class, 'midtransWebhook'])->name('midtrans.webhook');
+Route::match(['get', 'post'], '/api/midtrans/webhook', [ProfileController::class, 'midtransWebhook'])->name('midtrans.webhook');

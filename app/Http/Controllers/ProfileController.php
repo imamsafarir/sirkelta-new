@@ -868,7 +868,23 @@ class ProfileController extends Controller
      */
     public function midtransWebhook(Request $request): JsonResponse
     {
+        // Tangani GET request (misal pengecekan ketersediaan URL atau browser healthcheck)
+        if ($request->isMethod('get')) {
+            return response()->json([
+                'status' => 'ok',
+                'message' => 'Midtrans webhook endpoint is active and ready to receive notifications.',
+            ], 200);
+        }
+
         $payload = $request->all();
+        if (empty($payload)) {
+            $rawContent = $request->getContent();
+            $decoded = json_decode($rawContent, true);
+            if (is_array($decoded)) {
+                $payload = $decoded;
+            }
+        }
+
         $orderId = $payload['order_id'] ?? null;
         $statusCode = $payload['status_code'] ?? null;
         $grossAmount = $payload['gross_amount'] ?? null;
@@ -878,20 +894,34 @@ class ProfileController extends Controller
         $paymentType = $payload['payment_type'] ?? null;
         $transactionId = $payload['transaction_id'] ?? null;
 
+        // Tangani webhook ping tanpa order_id
         if (! $orderId) {
-            return response()->json(['message' => 'Missing order_id'], 400);
+            return response()->json([
+                'status' => 'ok',
+                'message' => 'Webhook ping received without order_id',
+            ], 200);
         }
 
         $order = PaymentOrder::where('order_number', $orderId)->first();
         if (! $order) {
-            return response()->json(['message' => 'Order not found'], 404);
+            // Midtrans 'Test notification URL' mengirimkan dummy order_id (contoh: test-transaction-xxx)
+            // Kembalikan HTTP 200 OK agar tes di Dashboard Midtrans sukses dan tidak melakukan retry tanpa henti
+            Log::info("Midtrans webhook acknowledged for test or unrecorded order_id: {$orderId}");
+
+            return response()->json([
+                'status' => 'ok',
+                'message' => "Order {$orderId} acknowledged (test notification or unrecorded order)",
+            ], 200);
         }
 
         $serverKey = WebsiteSetting::get('payment_midtrans_server_key', '');
-        $expectedSignature = hash('sha512', $orderId.$statusCode.$grossAmount.$serverKey);
+        if (! empty($serverKey) && ! empty($signatureKey)) {
+            $expectedSignature = hash('sha512', $orderId.$statusCode.$grossAmount.$serverKey);
+            if ($signatureKey !== $expectedSignature) {
+                Log::warning("Midtrans webhook signature mismatch for order #{$orderId}");
 
-        if (! empty($serverKey) && $signatureKey && $signatureKey !== $expectedSignature) {
-            return response()->json(['message' => 'Invalid signature'], 403);
+                return response()->json(['message' => 'Invalid signature'], 403);
+            }
         }
 
         $order->update([
@@ -913,6 +943,9 @@ class ProfileController extends Controller
             $order->update(['status' => 'pending']);
         }
 
-        return response()->json(['status' => 'ok']);
+        return response()->json([
+            'status' => 'ok',
+            'order_id' => $orderId,
+        ], 200);
     }
 }

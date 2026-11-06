@@ -289,6 +289,28 @@ test('midtrans webhook automatically marks order as paid with valid signature', 
         ->and($sub->status)->toBe('active');
 });
 
+test('midtrans webhook responds 200 ok for healthcheck get request and dashboard test notification', function () {
+    // 1. GET request check
+    $responseGet = $this->get('/api/midtrans/webhook');
+    $responseGet->assertOk();
+    $responseGet->assertJson(['status' => 'ok']);
+
+    // 2. Ping without order_id
+    $responsePing = $this->postJson('/api/midtrans/webhook', []);
+    $responsePing->assertOk();
+    $responsePing->assertJson(['status' => 'ok']);
+
+    // 3. Test ping with dummy order_id from Midtrans Dashboard (e.g. test-order-1234)
+    $responseTest = $this->postJson('/api/midtrans/webhook', [
+        'order_id' => 'test-transaction-dashboard-1234',
+        'status_code' => '200',
+        'gross_amount' => '10000.00',
+        'transaction_status' => 'settlement',
+    ]);
+    $responseTest->assertOk();
+    $responseTest->assertJson(['status' => 'ok']);
+});
+
 test('user cannot create paid payment order when all payment methods are disabled', function () {
     WebsiteSetting::set('payment_manual_enabled', '0');
     WebsiteSetting::set('payment_midtrans_enabled', '0');
