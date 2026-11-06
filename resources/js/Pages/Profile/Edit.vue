@@ -816,9 +816,12 @@ const triggerSnapPayment = (snapToken) => {
                 onError: () => {
                     cleanupNotch();
                     showToast("Pembayaran Midtrans gagal atau dibatalkan.", "error");
+                    router.reload({ preserveScroll: true });
                 },
                 onClose: () => {
                     cleanupNotch();
+                    showToast("Jendela pembayaran ditutup. Tagihan tersimpan di Riwayat Pesanan di bawah. Anda bisa klik 'Bayar Sekarang' untuk melanjutkan atau 'Batalkan' jika tidak jadi.", "info");
+                    router.reload({ preserveScroll: true });
                 },
             });
         }
@@ -844,6 +847,28 @@ const triggerSnapPayment = (snapToken) => {
             }
         }, 200);
     }
+};
+
+const isCancellingOrder = ref(null);
+
+const cancelOrder = (order) => {
+    if (!order || !order.id || isCancellingOrder.value) return;
+    if (!confirm(`Batalkan dan hapus pesanan #${order.order_number} dari riwayat?`)) {
+        return;
+    }
+    isCancellingOrder.value = order.id;
+    router.delete(route("profile.payment.order.cancel", order.id), {
+        preserveScroll: true,
+        onSuccess: () => {
+            showToast("Pesanan berhasil dibatalkan dan dihapus dari riwayat.", "success");
+        },
+        onError: () => {
+            showToast("Gagal membatalkan pesanan. Silakan coba lagi.", "error");
+        },
+        onFinish: () => {
+            isCancellingOrder.value = null;
+        },
+    });
 };
 
 onMounted(() => {
@@ -2593,11 +2618,13 @@ const submitDeleteAccount = () => {
                                                     }}
                                                 </Badge>
 
+                                                <!-- Action Buttons untuk Pending -->
                                                 <div 
-                                                    v-if="order.status === 'pending' && order.midtrans_snap_token" 
-                                                    class="mt-1.5 flex justify-center"
+                                                    v-if="order.status === 'pending'" 
+                                                    class="mt-1.5 flex items-center justify-center gap-1.5 flex-wrap"
                                                 >
                                                     <Button 
+                                                        v-if="order.midtrans_snap_token"
                                                         type="button" 
                                                         size="sm" 
                                                         variant="outline" 
@@ -2607,21 +2634,44 @@ const submitDeleteAccount = () => {
                                                         <Sparkles class="h-3 w-3" />
                                                         <span>Bayar Sekarang</span>
                                                     </Button>
+
+                                                    <Button
+                                                        type="button"
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        class="h-6 text-[10px] px-2 gap-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 font-medium"
+                                                        :disabled="isCancellingOrder === order.id"
+                                                        @click="cancelOrder(order)"
+                                                    >
+                                                        <Loader2 v-if="isCancellingOrder === order.id" class="h-3 w-3 animate-spin" />
+                                                        <Trash2 v-else class="h-3 w-3" />
+                                                        <span>Batalkan</span>
+                                                    </Button>
                                                 </div>
+
+                                                <!-- Action Buttons untuk Rejected / Expired -->
                                                 <div
-                                                    v-if="
-                                                        order.status ===
-                                                            'rejected' &&
-                                                        order.rejection_reason
-                                                    "
-                                                    class="text-[10px] text-destructive mt-0.5 max-w-xs truncate"
-                                                    :title="
-                                                        order.rejection_reason
-                                                    "
+                                                    v-if="order.status === 'rejected'"
+                                                    class="mt-1 flex flex-col items-center gap-1"
                                                 >
-                                                    "{{
-                                                        order.rejection_reason
-                                                    }}"
+                                                    <div
+                                                        v-if="order.rejection_reason"
+                                                        class="text-[10px] text-destructive max-w-xs truncate"
+                                                        :title="order.rejection_reason"
+                                                    >
+                                                        "{{ order.rejection_reason }}"
+                                                    </div>
+                                                    <Button
+                                                        type="button"
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        class="h-5 text-[10px] px-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                                        :disabled="isCancellingOrder === order.id"
+                                                        @click="cancelOrder(order)"
+                                                    >
+                                                        <Trash2 class="h-3 w-3 mr-1" />
+                                                        <span>Hapus Riwayat</span>
+                                                    </Button>
                                                 </div>
                                             </td>
                                         </tr>

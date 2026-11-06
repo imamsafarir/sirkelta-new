@@ -387,3 +387,117 @@ test('superadmin receives error when testing midtrans with invalid credentials',
         'success' => false,
     ]);
 });
+
+test('creating a new payment order clears any previous pending payment order for that module', function () {
+    $user = User::factory()->create();
+    $user->assignRole('user_keuangan');
+
+    // Create an old pending order
+    $oldOrder = PaymentOrder::create([
+        'order_number' => 'ORD-OLD-PENDING-001',
+        'user_id' => $user->id,
+        'module' => 'keuangan',
+        'duration_months' => 1,
+        'gross_amount' => 75000,
+        'discount_applied' => 0,
+        'final_amount' => 75000,
+        'payment_method' => 'manual_bank',
+        'status' => 'pending',
+    ]);
+
+    expect(PaymentOrder::where('id', $oldOrder->id)->exists())->toBeTrue();
+
+    // User creates a new order for keuangan
+    $this->actingAs($user)->post(route('profile.payment.order'), [
+        'module' => 'keuangan',
+        'duration_months' => 3,
+        'payment_method' => 'manual_bank',
+    ]);
+
+    // Old pending order should be deleted
+    expect(PaymentOrder::where('id', $oldOrder->id)->exists())->toBeFalse();
+
+    // Only 1 pending order exists for this user and module
+    $pendingOrders = PaymentOrder::where('user_id', $user->id)
+        ->where('module', 'keuangan')
+        ->where('status', 'pending')
+        ->get();
+    expect($pendingOrders)->toHaveCount(1);
+    expect($pendingOrders->first()->duration_months)->toBe(3);
+});
+
+test('user can cancel and delete their own pending payment order', function () {
+    $user = User::factory()->create();
+    $user->assignRole('user_keuangan');
+
+    $order = PaymentOrder::create([
+        'order_number' => 'ORD-TO-CANCEL-001',
+        'user_id' => $user->id,
+        'module' => 'keuangan',
+        'duration_months' => 1,
+        'gross_amount' => 75000,
+        'discount_applied' => 0,
+        'final_amount' => 75000,
+        'payment_method' => 'midtrans',
+        'status' => 'pending',
+    ]);
+
+    $response = $this->actingAs($user)->delete(route('profile.payment.order.cancel', $order->id));
+    $response->assertRedirect();
+    $response->assertSessionHas('success');
+
+    expect(PaymentOrder::where('id', $order->id)->exists())->toBeFalse();
+});
+
+test('user cannot cancel paid payment order', function () {
+    $user = User::factory()->create();
+    $user->assignRole('user_keuangan');
+
+    $order = PaymentOrder::create([
+        'order_number' => 'ORD-PAID-001',
+        'user_id' => $user->id,
+        'module' => 'keuangan',
+        'duration_months' => 1,
+        'gross_amount' => 75000,
+        'discount_applied' => 0,
+        'final_amount' => 75000,
+        'payment_method' => 'midtrans',
+        'status' => 'paid',
+        'paid_at' => now(),
+    ]);
+
+    $response = $this->actingAs($user)->delete(route('profile.payment.order.cancel', $order->id));
+    $response->assertRedirect();
+    $response->assertSessionHas('error');
+
+    expect(PaymentOrder::where('id', $order->id)->exists())->toBeTrue();
+});
+
+test('midtrans webhook with status expire, cancel, or deny automatically deletes the payment order', function () {
+    WebsiteSetting::set('payment_midtrans_server_key', 'test-server-key');
+
+    $order = PaymentOrder::create([
+        'order_number' => 'ORD-MIDTRANS-EXPIRE-001',
+        'user_id' => 1,
+        'module' => 'keuangan',
+        'duration_months' => 1,
+        'gross_amount' => 75000,
+        'discount_applied' => 0,
+        'final_amount' => 75000,
+        'payment_method' => 'midtrans',
+        'status' => 'pending',
+    ]);
+
+    $signatureKey = hash('sha512', 'ORD-MIDTRANS-EXPIRE-001'.'200'.'75000'.'test-server-key');
+
+    $response = $this->postJson(route('midtrans.webhook'), [
+        'order_id' => 'ORD-MIDTRANS-EXPIRE-001',
+        'status_code' => '200',
+        'gross_amount' => '75000',
+        'signature_key' => $signatureKey,
+        'transaction_status' => 'expire',
+    ]);
+
+    $response->assertOk();
+    expect(PaymentOrder::where('id', $order->id)->exists())->toBeFalse();
+});

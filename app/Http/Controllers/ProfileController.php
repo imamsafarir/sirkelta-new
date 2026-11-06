@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
@@ -171,9 +172,16 @@ class ProfileController extends Controller
             ],
         ];
 
+        // Bersihkan pesanan pending Midtrans yang telah kedaluwarsa (> 24 jam)
+        PaymentOrder::where('user_id', $user->id)
+            ->where('payment_method', 'midtrans')
+            ->where('status', 'pending')
+            ->where('created_at', '<', now()->subHours(24))
+            ->delete();
+
         $paymentOrders = PaymentOrder::where('user_id', $user->id)
             ->latest('id')
-            ->take(5)
+            ->take(10)
             ->get()
             ->map(function ($order) {
                 return [
@@ -794,6 +802,19 @@ class ProfileController extends Controller
                     $user->assignRole($roleName);
                 }
 
+                // Bersihkan pesanan pending sebelumnya milik pengguna untuk modul ini agar tidak menumpuk di riwayat
+                $oldPendingOrders = PaymentOrder::where('user_id', $user->id)
+                    ->where('module', $module)
+                    ->where('status', 'pending')
+                    ->get();
+
+                foreach ($oldPendingOrders as $oldOrder) {
+                    if ($oldOrder->payment_proof_path && Storage::disk('public')->exists(str_replace('storage/', '', $oldOrder->payment_proof_path))) {
+                        Storage::disk('public')->delete(str_replace('storage/', '', $oldOrder->payment_proof_path));
+                    }
+                    $oldOrder->delete();
+                }
+
                 PaymentOrder::create([
                     'order_number' => $orderNumber,
                     'user_id' => $user->id,
@@ -872,6 +893,19 @@ class ProfileController extends Controller
 
                 return back()->with('error', 'Terjadi gangguan koneksi saat menghubungi server Midtrans: '.$e->getMessage());
             }
+        }
+
+        // Bersihkan pesanan pending sebelumnya milik pengguna untuk modul ini agar tidak menumpuk di riwayat
+        $oldPendingOrders = PaymentOrder::where('user_id', $user->id)
+            ->where('module', $module)
+            ->where('status', 'pending')
+            ->get();
+
+        foreach ($oldPendingOrders as $oldOrder) {
+            if ($oldOrder->payment_proof_path && Storage::disk('public')->exists(str_replace('storage/', '', $oldOrder->payment_proof_path))) {
+                Storage::disk('public')->delete(str_replace('storage/', '', $oldOrder->payment_proof_path));
+            }
+            $oldOrder->delete();
         }
 
         PaymentOrder::create([
@@ -978,7 +1012,11 @@ class ProfileController extends Controller
                 }
             }
         } elseif ($transactionStatus === 'cancel' || $transactionStatus === 'deny' || $transactionStatus === 'expire') {
-            $order->update(['status' => 'rejected', 'rejection_reason' => 'Midtrans status: '.$transactionStatus]);
+            Log::info("Auto-deleting expired/cancelled Midtrans order #{$orderId} from history (Status: {$transactionStatus})");
+            if ($order->payment_proof_path && Storage::disk('public')->exists(str_replace('storage/', '', $order->payment_proof_path))) {
+                Storage::disk('public')->delete(str_replace('storage/', '', $order->payment_proof_path));
+            }
+            $order->delete();
         } elseif ($transactionStatus === 'pending') {
             $order->update(['status' => 'pending']);
         }
@@ -987,5 +1025,50 @@ class ProfileController extends Controller
             'status' => 'ok',
             'order_id' => $orderId,
         ], 200);
+    }
+
+    /**
+     * Cancel and delete an unpaid or rejected payment order.
+     */
+    public function cancelPaymentOrder(Request $request, PaymentOrder $order): RedirectResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        if ($order->user_id !== $user->id && ! $user->hasRole('superadmin')) {
+            abort(403, 'Anda tidak memiliki hak untuk membatalkan pesanan ini.');
+        }
+
+        if ($order->status === 'paid') {
+            return back()->with('error', 'Pesanan yang sudah berhasil dibayar tidak dapat dibatalkan.');
+        }
+
+        // Jika transaksi Midtrans masih pending, beri tahu Midtrans untuk cancel jika memungkinkan
+        if ($order->payment_method === 'midtrans' && $order->status === 'pending') {
+            $serverKey = trim(WebsiteSetting::get('payment_midtrans_server_key', ''));
+            $isProduction = WebsiteSetting::get('payment_midtrans_mode', 'sandbox') === 'production';
+            if (! empty($serverKey)) {
+                $cancelUrl = $isProduction
+                    ? "https://api.midtrans.com/v2/{$order->order_number}/cancel"
+                    : "https://api.sandbox.midtrans.com/v2/{$order->order_number}/cancel";
+                try {
+                    Http::withBasicAuth($serverKey, '')
+                        ->acceptJson()
+                        ->timeout(5)
+                        ->post($cancelUrl);
+                } catch (\Throwable $e) {
+                    // Abaikan jika order belum tercatat di Core API Midtrans
+                }
+            }
+        }
+
+        if ($order->payment_proof_path && Storage::disk('public')->exists(str_replace('storage/', '', $order->payment_proof_path))) {
+            Storage::disk('public')->delete(str_replace('storage/', '', $order->payment_proof_path));
+        }
+
+        $orderNumber = $order->order_number;
+        $order->delete();
+
+        return back()->with('success', "Pesanan #{$orderNumber} berhasil dibatalkan dan dihapus dari riwayat.");
     }
 }

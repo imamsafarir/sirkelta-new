@@ -76,6 +76,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/profile/modules/deactivate', [ProfileController::class, 'deactivateModule'])->name('profile.modules.deactivate');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     Route::post('/profile/payment/order', [ProfileController::class, 'createPaymentOrder'])->name('profile.payment.order');
+    Route::delete('/profile/payment/order/{order}', [ProfileController::class, 'cancelPaymentOrder'])->name('profile.payment.order.cancel');
     Route::post('/profile/pro/upgrade', [ProfileController::class, 'upgradePro'])->name('profile.pro.upgrade');
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
