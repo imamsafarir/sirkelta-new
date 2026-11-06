@@ -207,11 +207,13 @@ const paymentForm = useForm({
     payment_midtrans_mode: props.paymentSettings?.payment_midtrans_mode || 'sandbox',
     payment_midtrans_client_key: props.paymentSettings?.payment_midtrans_client_key || '',
     payment_midtrans_server_key: props.paymentSettings?.payment_midtrans_server_key || '',
+    payment_midtrans_signature_key: props.paymentSettings?.payment_midtrans_signature_key || '',
     payment_midtrans_merchant_id: props.paymentSettings?.payment_midtrans_merchant_id || '',
 });
 
 const qrisPreview = ref(props.paymentSettings?.payment_qris_image_path || null);
 const showServerKey = ref(false);
+const showSignatureKey = ref(false);
 const copiedField = ref(null);
 
 const originUrl = computed(() => {
@@ -730,8 +732,26 @@ const getPublicUrl = (tabId) => {
                                 </p>
                             </div>
 
-                            <!-- API Keys & Credentials: Merchant ID, Client Key, Signature Secret Key -->
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <!-- Panduan Pemetaan Kunci Midtrans Versi Baru -->
+                            <div class="p-4 rounded-xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/60 dark:bg-indigo-950/20 text-xs space-y-2">
+                                <div class="font-bold text-indigo-900 dark:text-indigo-300 flex items-center gap-1.5">
+                                    <Sparkles class="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                                    <span>Panduan Kredensial Midtrans (Format Dashboard Terbaru)</span>
+                                </div>
+                                <div class="text-muted-foreground leading-relaxed space-y-1">
+                                    <p>
+                                        Midtrans memisahkan antara <strong>Client Key</strong>, <strong>Signature Secret Key</strong>, dan <strong>Server Keys</strong>:
+                                    </p>
+                                    <ul class="list-disc list-inside space-y-1 ps-1 text-[11px]">
+                                        <li><strong>Client Key:</strong> Salin dari baris <em>Client Key</em> di Midtrans.</li>
+                                        <li><strong>Server Key:</strong> Pada dashboard Midtrans Anda di bagian <strong>Server Keys</strong>, klik tombol biru <strong>"Generate server key"</strong> untuk membuat Server Key baru. Salin kunci tersebut ke kolom Server Key di bawah. <em>(Catatan: Jangan menyalin baris Signature Secret Key ke kolom Server Key).</em></li>
+                                        <li><strong>Signature Secret Key (Opsional):</strong> Salin dari baris paling atas <em>Signature Secret Key</em> di Midtrans untuk verifikasi keamanan notifikasi webhook.</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <!-- API Keys & Credentials: 4 Grid Columns -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                 <div class="space-y-1.5">
                                     <Label for="merchant_id" class="text-xs font-semibold flex items-center gap-1.5">
                                         <Building2 class="h-3.5 w-3.5 text-muted-foreground" />
@@ -741,12 +761,12 @@ const getPublicUrl = (tabId) => {
                                         id="merchant_id"
                                         v-model="paymentForm.payment_midtrans_merchant_id"
                                         type="text"
-                                        placeholder="Contoh: G123456789 atau M123456"
+                                        placeholder="G123456789 atau M123456"
                                         class="text-xs font-mono font-medium"
                                         :disabled="!paymentForm.payment_midtrans_enabled"
                                     />
                                     <p class="text-[11px] text-muted-foreground">
-                                        Merchant ID unik tertera di pojok kiri atas Dashboard Midtrans.
+                                        ID unik di pojok kiri atas Midtrans.
                                     </p>
                                     <p v-if="paymentForm.errors.payment_midtrans_merchant_id" class="text-[11px] text-destructive font-medium">
                                         {{ paymentForm.errors.payment_midtrans_merchant_id }}
@@ -767,11 +787,11 @@ const getPublicUrl = (tabId) => {
                                         :disabled="!paymentForm.payment_midtrans_enabled"
                                     />
                                     <p class="text-[11px] text-muted-foreground">
-                                        Diperoleh dari Dashboard Midtrans > Settings > Access Keys (Client Key).
+                                        Salin dari baris Client Key di Midtrans.
                                     </p>
                                     <p v-if="paymentForm.payment_midtrans_client_key && paymentForm.payment_midtrans_client_key.toLowerCase().includes('-server-')" class="text-[11px] text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1">
                                         <AlertTriangle class="h-3 w-3 shrink-0" />
-                                        <span>Perhatian: Kunci ini berformat Server Key. Seharusnya ditempel di kolom Signature Secret Key.</span>
+                                        <span>Perhatian: Kunci ini berformat Server Key. Seharusnya ditempel di kolom Server Key.</span>
                                     </p>
                                     <p v-if="paymentForm.errors.payment_midtrans_client_key" class="text-[11px] text-destructive font-medium">
                                         {{ paymentForm.errors.payment_midtrans_client_key }}
@@ -781,7 +801,7 @@ const getPublicUrl = (tabId) => {
                                 <div class="space-y-1.5">
                                     <Label for="server_key" class="text-xs font-semibold flex items-center gap-1.5">
                                         <Key class="h-3.5 w-3.5 text-amber-500" />
-                                        <span>Signature Secret Key (Server Key)</span>
+                                        <span>Server Key (Wajib Transaksi)</span>
                                     </Label>
                                     <div class="relative">
                                         <Input
@@ -802,7 +822,7 @@ const getPublicUrl = (tabId) => {
                                         </button>
                                     </div>
                                     <p class="text-[11px] text-muted-foreground">
-                                        Kunci rahasia untuk otentikasi server & verifikasi signature transaksi Midtrans.
+                                        Dihasilkan dari tombol <strong>"Generate server key"</strong> di Midtrans.
                                     </p>
                                     <p v-if="paymentForm.payment_midtrans_server_key && paymentForm.payment_midtrans_server_key.toLowerCase().includes('-client-')" class="text-[11px] text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1">
                                         <AlertTriangle class="h-3 w-3 shrink-0" />
@@ -811,36 +831,64 @@ const getPublicUrl = (tabId) => {
                                     <p v-if="paymentForm.errors.payment_midtrans_server_key" class="text-[11px] text-destructive font-medium">
                                         {{ paymentForm.errors.payment_midtrans_server_key }}
                                     </p>
+                                </div>
 
-                                    <!-- Test Connection Button & Result -->
-                                    <div class="pt-2 flex flex-col gap-2">
-                                        <div class="flex items-center gap-2 flex-wrap">
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                class="h-8 text-xs gap-1.5 px-3 rounded-lg border-amber-300 dark:border-amber-700/80 hover:bg-amber-50 dark:hover:bg-amber-950/40 text-amber-800 dark:text-amber-300"
-                                                :disabled="testingMidtrans || !paymentForm.payment_midtrans_server_key"
-                                                @click="testMidtransConnection"
-                                            >
-                                                <Zap class="h-3.5 w-3.5" :class="{ 'animate-pulse': testingMidtrans }" />
-                                                <span>{{ testingMidtrans ? 'Sedang Menguji...' : 'Tes Koneksi Midtrans' }}</span>
-                                            </Button>
-                                            <span class="text-[11px] text-muted-foreground">
-                                                Uji validitas Server Key & mode saat ini langsung ke API Midtrans.
-                                            </span>
-                                        </div>
-
-                                        <div
-                                            v-if="midtransTestResult"
-                                            class="p-3 rounded-xl border text-xs flex items-start gap-2.5 animate-in fade-in"
-                                            :class="midtransTestResult.success ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-800 dark:text-emerald-300' : 'bg-destructive/10 border-destructive/30 text-destructive'"
+                                <div class="space-y-1.5">
+                                    <Label for="signature_key" class="text-xs font-semibold flex items-center gap-1.5">
+                                        <ShieldCheck class="h-3.5 w-3.5 text-indigo-500" />
+                                        <span>Signature Secret Key (Opsional)</span>
+                                    </Label>
+                                    <div class="relative">
+                                        <Input
+                                            id="signature_key"
+                                            v-model="paymentForm.payment_midtrans_signature_key"
+                                            :type="showSignatureKey ? 'text' : 'password'"
+                                            placeholder="Salin dari baris Signature Secret Key"
+                                            class="text-xs font-mono font-medium pr-10"
+                                            :disabled="!paymentForm.payment_midtrans_enabled"
+                                        />
+                                        <button
+                                            type="button"
+                                            @click="showSignatureKey = !showSignatureKey"
+                                            class="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                                            title="Tampilkan / sembunyikan key"
                                         >
-                                            <CheckCircle2 v-if="midtransTestResult.success" class="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
-                                            <AlertTriangle v-else class="h-4 w-4 shrink-0 text-destructive mt-0.5" />
-                                            <span class="flex-1 font-medium leading-relaxed">{{ midtransTestResult.message }}</span>
-                                        </div>
+                                            <component :is="showSignatureKey ? EyeOff : Eye" class="h-4 w-4" />
+                                        </button>
                                     </div>
+                                    <p class="text-[11px] text-muted-foreground">
+                                        Salin dari baris paling atas untuk verifikasi webhook.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Test Connection Button & Result -->
+                            <div class="p-3.5 rounded-xl border bg-muted/30 flex flex-col gap-2.5">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        class="h-8 text-xs gap-1.5 px-3 rounded-lg border-amber-300 dark:border-amber-700/80 hover:bg-amber-50 dark:hover:bg-amber-950/40 text-amber-800 dark:text-amber-300"
+                                        :disabled="testingMidtrans || !paymentForm.payment_midtrans_server_key"
+                                        @click="testMidtransConnection"
+                                    >
+                                        <Zap class="h-3.5 w-3.5" :class="{ 'animate-pulse': testingMidtrans }" />
+                                        <span>{{ testingMidtrans ? 'Sedang Menguji...' : 'Tes Koneksi Midtrans' }}</span>
+                                    </Button>
+                                    <span class="text-[11px] text-muted-foreground">
+                                        Menguji apakah Server Key dan Mode saat ini diterima oleh API Midtrans Snap.
+                                    </span>
+                                </div>
+
+                                <div
+                                    v-if="midtransTestResult"
+                                    class="p-3 rounded-xl border text-xs flex items-start gap-2.5 animate-in fade-in"
+                                    :class="midtransTestResult.success ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-800 dark:text-emerald-300' : 'bg-destructive/10 border-destructive/30 text-destructive'"
+                                >
+                                    <CheckCircle2 v-if="midtransTestResult.success" class="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
+                                    <AlertTriangle v-else class="h-4 w-4 shrink-0 text-destructive mt-0.5" />
+                                    <span class="flex-1 font-medium leading-relaxed">{{ midtransTestResult.message }}</span>
                                 </div>
                             </div>
 

@@ -951,9 +951,13 @@ class ProfileController extends Controller
         }
 
         $serverKey = WebsiteSetting::get('payment_midtrans_server_key', '');
-        if (! empty($serverKey) && ! empty($signatureKey)) {
-            $expectedSignature = hash('sha512', $orderId.$statusCode.$grossAmount.$serverKey);
-            if ($signatureKey !== $expectedSignature) {
+        $signatureSecret = WebsiteSetting::get('payment_midtrans_signature_key', '');
+
+        if (! empty($signatureKey) && (! empty($serverKey) || ! empty($signatureSecret))) {
+            $expectedWithServerKey = ! empty($serverKey) ? hash('sha512', $orderId.$statusCode.$grossAmount.$serverKey) : null;
+            $expectedWithSecret = ! empty($signatureSecret) ? hash('sha512', $orderId.$statusCode.$grossAmount.$signatureSecret) : null;
+
+            if ($signatureKey !== $expectedWithServerKey && $signatureKey !== $expectedWithSecret) {
                 Log::warning("Midtrans webhook signature mismatch for order #{$orderId}");
 
                 return response()->json(['message' => 'Invalid signature'], 403);

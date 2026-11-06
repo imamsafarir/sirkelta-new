@@ -69,6 +69,7 @@ class AdminWebsiteController extends Controller
             'payment_midtrans_mode' => WebsiteSetting::get('payment_midtrans_mode', 'sandbox'),
             'payment_midtrans_client_key' => WebsiteSetting::get('payment_midtrans_client_key', ''),
             'payment_midtrans_server_key' => WebsiteSetting::get('payment_midtrans_server_key', ''),
+            'payment_midtrans_signature_key' => WebsiteSetting::get('payment_midtrans_signature_key', ''),
             'payment_midtrans_merchant_id' => WebsiteSetting::get('payment_midtrans_merchant_id', ''),
         ];
 
@@ -102,6 +103,7 @@ class AdminWebsiteController extends Controller
             'payment_midtrans_mode' => ['required', 'in:sandbox,production'],
             'payment_midtrans_client_key' => ['nullable', 'string', 'max:255'],
             'payment_midtrans_server_key' => ['nullable', 'string', 'max:255'],
+            'payment_midtrans_signature_key' => ['nullable', 'string', 'max:255'],
             'payment_midtrans_merchant_id' => ['nullable', 'string', 'max:100'],
         ], [
             'payment_manual_enabled.required' => 'Status pembayaran manual wajib diisi.',
@@ -140,6 +142,7 @@ class AdminWebsiteController extends Controller
         WebsiteSetting::set('payment_midtrans_mode', $validated['payment_midtrans_mode']);
         WebsiteSetting::set('payment_midtrans_client_key', $clientKey);
         WebsiteSetting::set('payment_midtrans_server_key', $serverKey);
+        WebsiteSetting::set('payment_midtrans_signature_key', trim($validated['payment_midtrans_signature_key'] ?? ''));
         WebsiteSetting::set('payment_midtrans_merchant_id', $merchantId);
 
         return back()->with('success', 'Pengaturan metode pembayaran berhasil disimpan.');
@@ -192,14 +195,14 @@ class AdminWebsiteController extends Controller
             if ($response->successful()) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'Koneksi ke Midtrans BERHASIL! Signature Secret Key (Server Key) valid dan siap menerima transaksi.',
+                    'message' => 'Koneksi ke Midtrans BERHASIL! Server Key valid dan siap menerima transaksi.',
                 ]);
             }
 
             if ($response->status() === 401) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Otentikasi GAGAL (401 Unauthorized): Signature Secret Key (Server Key) tidak dikenali atau salah mode ('.strtoupper($validated['mode']).'). Pastikan Anda menyalin Server Key dari Dashboard Midtrans > Settings > Access Keys.',
+                    'message' => 'Otentikasi GAGAL (401 Unauthorized): Kunci yang Anda masukkan ditolak Midtrans. Penting: Jangan menyalin baris "Signature Secret Key"! Di dashboard Midtrans Anda, klik tombol "Generate server key" pada bagian Server Keys, lalu salin Server Key yang muncul.',
                 ], 422);
             }
 
