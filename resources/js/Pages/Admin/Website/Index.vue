@@ -298,12 +298,25 @@ const testMidtransConnection = async () => {
     testingMidtrans.value = true;
     midtransTestResult.value = null;
 
+    let testUrl = '/admin/website/payment-settings/test-midtrans';
     try {
-        const response = await fetch(route('website.payment.test-midtrans'), {
+        if (typeof route === 'function') {
+            testUrl = route('admin.website.payment.test-midtrans');
+        }
+    } catch {
+        testUrl = '/admin/website/payment-settings/test-midtrans';
+    }
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+        || (document.cookie.match(/XSRF-TOKEN=([^;]+)/) ? decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)[1]) : '');
+
+    try {
+        const response = await fetch(testUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                'X-CSRF-TOKEN': csrfToken,
+                'X-XSRF-TOKEN': csrfToken,
                 'Accept': 'application/json',
             },
             body: JSON.stringify({
