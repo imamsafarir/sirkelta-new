@@ -750,6 +750,41 @@ const loadMidtransScript = () => {
     document.head.appendChild(script);
 };
 
+const applySnapNotchAdjustment = () => {
+    if (typeof window === "undefined" || typeof document === "undefined") return () => {};
+
+    document.body.classList.add("snap-open");
+
+    const adjust = () => {
+        const snapEl = document.querySelector(
+            '#snap-midtrans, iframe#snap-midtrans, iframe[id*="snap"], iframe[src*="midtrans.com"]'
+        );
+        if (snapEl) {
+            snapEl.style.setProperty("top", "env(safe-area-inset-top, 0px)", "important");
+            snapEl.style.setProperty("height", "calc(100% - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))", "important");
+            snapEl.style.setProperty("height", "calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))", "important");
+            snapEl.style.setProperty("max-height", "calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))", "important");
+            snapEl.style.setProperty("box-sizing", "border-box", "important");
+        }
+    };
+
+    adjust();
+    const observer = new MutationObserver(adjust);
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    const timer1 = setTimeout(adjust, 200);
+    const timer2 = setTimeout(adjust, 600);
+    const timer3 = setTimeout(adjust, 1200);
+
+    return () => {
+        clearTimeout(timer1);
+        clearTimeout(timer2);
+        clearTimeout(timer3);
+        observer.disconnect();
+        document.body.classList.remove("snap-open");
+    };
+};
+
 const triggerSnapPayment = (snapToken) => {
     if (!snapToken || typeof window === "undefined") return;
 
@@ -758,20 +793,24 @@ const triggerSnapPayment = (snapToken) => {
 
     const executePay = () => {
         if (window.snap && typeof window.snap.pay === "function") {
+            const cleanupNotch = applySnapNotchAdjustment();
             window.snap.pay(snapToken, {
                 onSuccess: () => {
+                    cleanupNotch();
                     showToast("Pembayaran berhasil! Paket Pro Anda sedang diaktifkan.", "success");
                     router.reload({ preserveScroll: true });
                 },
                 onPending: () => {
+                    cleanupNotch();
                     showToast("Pembayaran menunggu verifikasi. Silakan selesaikan pembayaran tagihan Anda.", "info");
                     router.reload({ preserveScroll: true });
                 },
                 onError: () => {
+                    cleanupNotch();
                     showToast("Pembayaran Midtrans gagal atau dibatalkan.", "error");
                 },
                 onClose: () => {
-                    // Popup ditutup pengguna
+                    cleanupNotch();
                 },
             });
         }

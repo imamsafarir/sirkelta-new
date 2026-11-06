@@ -34,6 +34,9 @@
         @inertiaHead
     </head>
     <body class="font-sans antialiased bg-background text-foreground">
+        <!-- Midtrans Snap Mobile Notch & Safe Area Backdrop -->
+        <div id="snap-notch-cover" class="snap-notch-cover" aria-hidden="true"></div>
+
         @inertia
     </body>
 </html>
