@@ -671,18 +671,27 @@ const closeCheckoutModal = () => {
     proofPreview.value = null;
 };
 
+const showToast = (message) => {
+    if (typeof window !== "undefined") {
+        alert(message);
+    }
+};
+
 const submitCheckout = () => {
     checkoutForm.clearErrors();
 
-    const finalAmt = checkoutApp.value 
-        ? calculateFinalAmount(checkoutApp.value.module, checkoutDuration.value) 
-        : 1;
+    const finalAmt = checkoutCalculation.value?.finalAmount ?? 0;
 
     // Cegah transaksi berbayar jika semua metode pembayaran dinonaktifkan
     if (finalAmt > 0 && isAllPaymentsDisabled.value) {
-        showToast("Layanan transaksi pembayaran sedang ditutup sementara karena sedang ada perbaikan.", "error");
+        showToast("Layanan transaksi pembayaran sedang ditutup sementara karena sedang ada perbaikan.");
         return;
     }
+
+    if (checkoutApp.value?.module) {
+        checkoutForm.module = checkoutApp.value.module;
+    }
+    checkoutForm.duration_months = checkoutDuration.value;
 
     checkoutForm.post(route("profile.payment.order"), {
         preserveScroll: true,
@@ -694,6 +703,9 @@ const submitCheckout = () => {
             } else if (checkoutForm.payment_method !== "midtrans") {
                 closeCheckoutModal();
             }
+        },
+        onError: (err) => {
+            console.error("Kesalahan checkout:", err);
         },
     });
 };
