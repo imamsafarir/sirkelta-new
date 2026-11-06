@@ -120,11 +120,25 @@ class AdminWebsiteController extends Controller
             WebsiteSetting::set('payment_qris_image_path', 'storage/'.$path);
         }
 
+        $clientKey = trim($validated['payment_midtrans_client_key'] ?? '');
+        $serverKey = trim($validated['payment_midtrans_server_key'] ?? '');
+        $merchantId = trim($validated['payment_midtrans_merchant_id'] ?? '');
+
+        // Deteksi otomatis jika input Client Key dan Server Key tertukar
+        if (
+            (str_contains(strtolower($clientKey), '-server-') || str_starts_with($clientKey, 'SB-Mid-server') || str_starts_with($clientKey, 'Mid-server')) &&
+            (str_contains(strtolower($serverKey), '-client-') || str_starts_with($serverKey, 'SB-Mid-client') || str_starts_with($serverKey, 'Mid-client'))
+        ) {
+            $temp = $clientKey;
+            $clientKey = $serverKey;
+            $serverKey = $temp;
+        }
+
         WebsiteSetting::set('payment_midtrans_enabled', $validated['payment_midtrans_enabled'] ? '1' : '0');
         WebsiteSetting::set('payment_midtrans_mode', $validated['payment_midtrans_mode']);
-        WebsiteSetting::set('payment_midtrans_client_key', $validated['payment_midtrans_client_key'] ?? '');
-        WebsiteSetting::set('payment_midtrans_server_key', $validated['payment_midtrans_server_key'] ?? '');
-        WebsiteSetting::set('payment_midtrans_merchant_id', $validated['payment_midtrans_merchant_id'] ?? '');
+        WebsiteSetting::set('payment_midtrans_client_key', $clientKey);
+        WebsiteSetting::set('payment_midtrans_server_key', $serverKey);
+        WebsiteSetting::set('payment_midtrans_merchant_id', $merchantId);
 
         return back()->with('success', 'Pengaturan metode pembayaran berhasil disimpan.');
     }

@@ -182,12 +182,23 @@ class ProfileController extends Controller
                     'app_name' => $order->app_name,
                     'duration_months' => $order->duration_months,
                     'final_amount' => (float) $order->final_amount,
+                    'payment_method' => $order->payment_method,
                     'payment_method_label' => $order->payment_method_label,
                     'status' => $order->status,
                     'rejection_reason' => $order->rejection_reason,
+                    'midtrans_snap_token' => $order->midtrans_snap_token,
                     'created_at' => $order->created_at?->format('d M Y H:i'),
                 ];
             });
+
+        $midtransClientKey = trim(WebsiteSetting::get('payment_midtrans_client_key', ''));
+        $midtransServerKey = trim(WebsiteSetting::get('payment_midtrans_server_key', ''));
+        if (
+            (str_contains(strtolower($midtransClientKey), '-server-') || str_starts_with($midtransClientKey, 'SB-Mid-server') || str_starts_with($midtransClientKey, 'Mid-server')) &&
+            (str_contains(strtolower($midtransServerKey), '-client-') || str_starts_with($midtransServerKey, 'SB-Mid-client') || str_starts_with($midtransServerKey, 'Mid-client'))
+        ) {
+            $midtransClientKey = $midtransServerKey;
+        }
 
         return Inertia::render('Profile/Edit', [
             'user' => [
@@ -223,7 +234,7 @@ class ProfileController extends Controller
                 'support_whatsapp' => WebsiteSetting::getWithDefault('support_whatsapp'),
                 'midtrans_enabled' => (bool) ((int) WebsiteSetting::get('payment_midtrans_enabled', '0')),
                 'midtrans_mode' => WebsiteSetting::get('payment_midtrans_mode', 'sandbox'),
-                'midtrans_client_key' => WebsiteSetting::get('payment_midtrans_client_key', ''),
+                'midtrans_client_key' => $midtransClientKey,
                 'midtrans_merchant_id' => WebsiteSetting::get('payment_midtrans_merchant_id', ''),
             ],
             'status' => session('status'),
@@ -801,40 +812,63 @@ class ProfileController extends Controller
         $snapToken = null;
         if ($method === 'midtrans') {
             $isProduction = WebsiteSetting::get('payment_midtrans_mode', 'sandbox') === 'production';
-            $serverKey = WebsiteSetting::get('payment_midtrans_server_key', '');
+            $serverKey = trim(WebsiteSetting::get('payment_midtrans_server_key', ''));
+            $clientKey = trim(WebsiteSetting::get('payment_midtrans_client_key', ''));
+
+            // Auto-fallback jika server_key dan client_key tertukar di database
+            if (
+                (str_contains(strtolower($serverKey), '-client-') || str_starts_with($serverKey, 'SB-Mid-client') || str_starts_with($serverKey, 'Mid-client')) &&
+                (str_contains(strtolower($clientKey), '-server-') || str_starts_with($clientKey, 'SB-Mid-server') || str_starts_with($clientKey, 'Mid-server'))
+            ) {
+                $temp = $serverKey;
+                $serverKey = $clientKey;
+                $clientKey = $temp;
+            }
+
+            if (empty($serverKey)) {
+                return back()->with('error', 'Midtrans Server Key belum dikonfigurasi di Pengaturan Website > Metode Pembayaran.');
+            }
+
             $snapUrl = $isProduction
                 ? 'https://app.midtrans.com/snap/v1/transactions'
                 : 'https://app.sandbox.midtrans.com/snap/v1/transactions';
 
-            if (! empty($serverKey)) {
-                try {
-                    $response = Http::withBasicAuth($serverKey, '')
-                        ->acceptJson()
-                        ->post($snapUrl, [
-                            'transaction_details' => [
-                                'order_id' => $orderNumber,
-                                'gross_amount' => (int) round($finalAmount),
+            try {
+                $response = Http::withBasicAuth($serverKey, '')
+                    ->acceptJson()
+                    ->timeout(15)
+                    ->post($snapUrl, [
+                        'transaction_details' => [
+                            'order_id' => $orderNumber,
+                            'gross_amount' => (int) round($finalAmount),
+                        ],
+                        'customer_details' => [
+                            'first_name' => $user->name,
+                            'email' => $user->email,
+                        ],
+                        'item_details' => [
+                            [
+                                'id' => $module.'_pro',
+                                'price' => (int) round($finalAmount),
+                                'quantity' => 1,
+                                'name' => "{$appName} ({$months} Bulan)",
                             ],
-                            'customer_details' => [
-                                'first_name' => $user->name,
-                                'email' => $user->email,
-                            ],
-                            'item_details' => [
-                                [
-                                    'id' => $module.'_pro',
-                                    'price' => (int) round($finalAmount),
-                                    'quantity' => 1,
-                                    'name' => "{$appName} ({$months} Bulan)",
-                                ],
-                            ],
-                        ]);
+                        ],
+                    ]);
 
-                    if ($response->successful()) {
-                        $snapToken = $response->json('token');
-                    }
-                } catch (\Throwable $e) {
-                    Log::error('Midtrans Snap Error: '.$e->getMessage());
+                if ($response->successful()) {
+                    $snapToken = $response->json('token');
+                } else {
+                    $errorBody = $response->json();
+                    $errorMsg = is_array($errorBody) ? ($errorBody['error_messages'][0] ?? $errorBody['error'] ?? $response->body()) : $response->body();
+                    Log::error("Midtrans Snap Error ({$response->status()}): {$errorMsg}");
+
+                    return back()->with('error', "Gagal memproses pembayaran Midtrans ({$response->status()}): {$errorMsg}. Silakan periksa kembali Signature Secret Key (Server Key) dan Mode (Sandbox/Production) di Pengaturan Pembayaran.");
                 }
+            } catch (\Throwable $e) {
+                Log::error('Midtrans Snap Exception: '.$e->getMessage());
+
+                return back()->with('error', 'Terjadi gangguan koneksi saat menghubungi server Midtrans: '.$e->getMessage());
             }
         }
 

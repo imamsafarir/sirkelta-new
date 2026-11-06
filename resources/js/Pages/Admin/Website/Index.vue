@@ -710,6 +710,10 @@ const getPublicUrl = (tabId) => {
                                     <p class="text-[11px] text-muted-foreground">
                                         Diperoleh dari Dashboard Midtrans > Settings > Access Keys (Client Key).
                                     </p>
+                                    <p v-if="paymentForm.payment_midtrans_client_key && paymentForm.payment_midtrans_client_key.toLowerCase().includes('-server-')" class="text-[11px] text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1">
+                                        <AlertTriangle class="h-3 w-3 shrink-0" />
+                                        <span>Perhatian: Kunci ini berformat Server Key. Seharusnya ditempel di kolom Signature Secret Key.</span>
+                                    </p>
                                     <p v-if="paymentForm.errors.payment_midtrans_client_key" class="text-[11px] text-destructive font-medium">
                                         {{ paymentForm.errors.payment_midtrans_client_key }}
                                     </p>
@@ -740,6 +744,10 @@ const getPublicUrl = (tabId) => {
                                     </div>
                                     <p class="text-[11px] text-muted-foreground">
                                         Kunci rahasia untuk otentikasi server & verifikasi signature transaksi Midtrans.
+                                    </p>
+                                    <p v-if="paymentForm.payment_midtrans_server_key && paymentForm.payment_midtrans_server_key.toLowerCase().includes('-client-')" class="text-[11px] text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1">
+                                        <AlertTriangle class="h-3 w-3 shrink-0" />
+                                        <span>Perhatian: Kunci ini berformat Client Key. Seharusnya ditempel di kolom Client Key.</span>
                                     </p>
                                     <p v-if="paymentForm.errors.payment_midtrans_server_key" class="text-[11px] text-destructive font-medium">
                                         {{ paymentForm.errors.payment_midtrans_server_key }}

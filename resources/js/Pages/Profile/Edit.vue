@@ -687,8 +687,11 @@ const submitCheckout = () => {
     checkoutForm.post(route("profile.payment.order"), {
         preserveScroll: true,
         forceFormData: true,
-        onSuccess: () => {
-            if (checkoutForm.payment_method !== "midtrans") {
+        onSuccess: (response) => {
+            const token = response?.props?.flash?.midtrans_snap_token || page.props.flash?.midtrans_snap_token;
+            if (token) {
+                triggerSnapPayment(token);
+            } else if (checkoutForm.payment_method !== "midtrans") {
                 closeCheckoutModal();
             }
         },
@@ -726,6 +729,55 @@ const loadMidtransScript = () => {
     document.head.appendChild(script);
 };
 
+const triggerSnapPayment = (snapToken) => {
+    if (!snapToken || typeof window === "undefined") return;
+
+    // Tutup modal checkout agar tidak menutupi tampilan popup Midtrans Snap
+    closeCheckoutModal();
+
+    const executePay = () => {
+        if (window.snap && typeof window.snap.pay === "function") {
+            window.snap.pay(snapToken, {
+                onSuccess: () => {
+                    showToast("Pembayaran berhasil! Paket Pro Anda sedang diaktifkan.", "success");
+                    router.reload({ preserveScroll: true });
+                },
+                onPending: () => {
+                    showToast("Pembayaran menunggu verifikasi. Silakan selesaikan pembayaran tagihan Anda.", "info");
+                    router.reload({ preserveScroll: true });
+                },
+                onError: () => {
+                    showToast("Pembayaran Midtrans gagal atau dibatalkan.", "error");
+                },
+                onClose: () => {
+                    // Popup ditutup pengguna
+                },
+            });
+        }
+    };
+
+    if (window.snap && typeof window.snap.pay === "function") {
+        executePay();
+    } else {
+        loadMidtransScript();
+        const script = document.getElementById("midtrans-snap-script");
+        if (script) {
+            script.addEventListener("load", executePay, { once: true });
+        }
+        let attempts = 0;
+        const interval = setInterval(() => {
+            attempts++;
+            if (window.snap && typeof window.snap.pay === "function") {
+                clearInterval(interval);
+                executePay();
+            } else if (attempts > 30) {
+                clearInterval(interval);
+                showToast("Jendela pembayaran Midtrans belum dapat dimuat. Pastikan koneksi internet stabil atau muat ulang halaman.", "error");
+            }
+        }, 200);
+    }
+};
+
 onMounted(() => {
     loadMidtransScript();
 });
@@ -733,25 +785,11 @@ onMounted(() => {
 watch(
     () => page.props.flash?.midtrans_snap_token,
     (snapToken) => {
-        if (snapToken && typeof window !== "undefined" && window.snap) {
-            window.snap.pay(snapToken, {
-                onSuccess: () => {
-                    closeCheckoutModal();
-                    router.reload({ preserveScroll: true });
-                },
-                onPending: () => {
-                    closeCheckoutModal();
-                    router.reload({ preserveScroll: true });
-                },
-                onError: () => {
-                    alert("Pembayaran gagal atau dibatalkan.");
-                },
-                onClose: () => {
-                    // user closed popup
-                },
-            });
+        if (snapToken) {
+            triggerSnapPayment(snapToken);
         }
     },
+    { immediate: true },
 );
 
 // --- REFERRAL SECTION ---
@@ -2472,6 +2510,22 @@ const submitDeleteAccount = () => {
                                                               : "Ditolak"
                                                     }}
                                                 </Badge>
+
+                                                <div 
+                                                    v-if="order.status === 'pending' && order.midtrans_snap_token" 
+                                                    class="mt-1.5 flex justify-center"
+                                                >
+                                                    <Button 
+                                                        type="button" 
+                                                        size="sm" 
+                                                        variant="outline" 
+                                                        class="h-6 text-[10px] px-2.5 gap-1 rounded-lg border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 font-bold"
+                                                        @click="triggerSnapPayment(order.midtrans_snap_token)"
+                                                    >
+                                                        <Sparkles class="h-3 w-3" />
+                                                        <span>Bayar Sekarang</span>
+                                                    </Button>
+                                                </div>
                                                 <div
                                                     v-if="
                                                         order.status ===
