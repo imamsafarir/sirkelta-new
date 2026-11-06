@@ -104,6 +104,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/website', [AdminWebsiteController::class, 'index'])->name('website.index');
             Route::put('/website/settings', [AdminWebsiteController::class, 'updateSettings'])->name('website.settings.update');
             Route::match(['put', 'post'], '/website/payment-settings', [AdminWebsiteController::class, 'updatePaymentSettings'])->name('website.payment.update');
+            Route::post('/website/payment-settings/test-midtrans', [AdminWebsiteController::class, 'testMidtrans'])->name('website.payment.test-midtrans');
             Route::put('/website/page', [AdminWebsiteController::class, 'updatePage'])->name('website.page.update');
             Route::post('/website/faqs', [AdminWebsiteController::class, 'storeFaq'])->name('website.faqs.store');
             Route::put('/website/faqs/{faq}', [AdminWebsiteController::class, 'updateFaq'])->name('website.faqs.update');

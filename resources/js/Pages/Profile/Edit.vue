@@ -693,14 +693,23 @@ const submitCheckout = () => {
     }
     checkoutForm.duration_months = checkoutDuration.value;
 
+    const isMidtrans = checkoutForm.payment_method === "midtrans";
+
     checkoutForm.post(route("profile.payment.order"), {
         preserveScroll: true,
-        forceFormData: true,
+        forceFormData: !isMidtrans,
         onSuccess: (response) => {
             const token = response?.props?.flash?.midtrans_snap_token || page.props.flash?.midtrans_snap_token;
+            const flashError = response?.props?.flash?.error || page.props.flash?.error;
+
+            if (flashError) {
+                showToast(flashError);
+                return;
+            }
+
             if (token) {
                 triggerSnapPayment(token);
-            } else if (checkoutForm.payment_method !== "midtrans") {
+            } else if (!isMidtrans) {
                 closeCheckoutModal();
             }
         },

@@ -37,7 +37,8 @@ import {
     Eye,
     EyeOff,
     AlertCircle,
-    AlertTriangle
+    AlertTriangle,
+    Zap
 } from 'lucide-vue-next';
 import RichTextEditor from '@/Components/RichTextEditor.vue';
 
@@ -279,6 +280,51 @@ const copyUrl = async (url, fieldKey) => {
         }, 2000);
     } catch (err) {
         console.error('Gagal menyalin URL:', err);
+    }
+};
+
+const testingMidtrans = ref(false);
+const midtransTestResult = ref(null);
+
+const testMidtransConnection = async () => {
+    if (!paymentForm.payment_midtrans_server_key) {
+        midtransTestResult.value = {
+            success: false,
+            message: 'Harap isi Signature Secret Key (Server Key) terlebih dahulu untuk menguji koneksi.',
+        };
+        return;
+    }
+
+    testingMidtrans.value = true;
+    midtransTestResult.value = null;
+
+    try {
+        const response = await fetch(route('website.payment.test-midtrans'), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({
+                mode: paymentForm.payment_midtrans_mode,
+                server_key: paymentForm.payment_midtrans_server_key,
+                client_key: paymentForm.payment_midtrans_client_key,
+            }),
+        });
+
+        const data = await response.json();
+        midtransTestResult.value = {
+            success: response.ok && data.success,
+            message: data.message || (response.ok ? 'Koneksi berhasil!' : 'Koneksi gagal.'),
+        };
+    } catch (err) {
+        midtransTestResult.value = {
+            success: false,
+            message: 'Gagal menghubungi server aplikasi: ' + err.message,
+        };
+    } finally {
+        testingMidtrans.value = false;
     }
 };
 
@@ -752,6 +798,36 @@ const getPublicUrl = (tabId) => {
                                     <p v-if="paymentForm.errors.payment_midtrans_server_key" class="text-[11px] text-destructive font-medium">
                                         {{ paymentForm.errors.payment_midtrans_server_key }}
                                     </p>
+
+                                    <!-- Test Connection Button & Result -->
+                                    <div class="pt-2 flex flex-col gap-2">
+                                        <div class="flex items-center gap-2 flex-wrap">
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                class="h-8 text-xs gap-1.5 px-3 rounded-lg border-amber-300 dark:border-amber-700/80 hover:bg-amber-50 dark:hover:bg-amber-950/40 text-amber-800 dark:text-amber-300"
+                                                :disabled="testingMidtrans || !paymentForm.payment_midtrans_server_key"
+                                                @click="testMidtransConnection"
+                                            >
+                                                <Zap class="h-3.5 w-3.5" :class="{ 'animate-pulse': testingMidtrans }" />
+                                                <span>{{ testingMidtrans ? 'Sedang Menguji...' : 'Tes Koneksi Midtrans' }}</span>
+                                            </Button>
+                                            <span class="text-[11px] text-muted-foreground">
+                                                Uji validitas Server Key & mode saat ini langsung ke API Midtrans.
+                                            </span>
+                                        </div>
+
+                                        <div
+                                            v-if="midtransTestResult"
+                                            class="p-3 rounded-xl border text-xs flex items-start gap-2.5 animate-in fade-in"
+                                            :class="midtransTestResult.success ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-800 dark:text-emerald-300' : 'bg-destructive/10 border-destructive/30 text-destructive'"
+                                        >
+                                            <CheckCircle2 v-if="midtransTestResult.success" class="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
+                                            <AlertTriangle v-else class="h-4 w-4 shrink-0 text-destructive mt-0.5" />
+                                            <span class="flex-1 font-medium leading-relaxed">{{ midtransTestResult.message }}</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 

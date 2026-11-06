@@ -239,6 +239,8 @@ class ProfileController extends Controller
             ],
             'status' => session('status'),
             'flash' => [
+                'success' => session('success'),
+                'error' => session('error'),
                 'midtrans_snap_token' => session('midtrans_snap_token'),
                 'order_number' => session('order_number'),
             ],

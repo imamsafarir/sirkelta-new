@@ -328,3 +328,62 @@ test('user cannot create paid payment order when all payment methods are disable
 
     expect(PaymentOrder::where('user_id', $user->id)->count())->toBe(0);
 });
+
+test('profile edit page preserves success and error flash messages in inertia props', function () {
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user)
+        ->withSession([
+            'error' => 'Gagal memproses pembayaran Midtrans: Server Key tidak valid',
+            'success' => 'Operasi sukses',
+        ])
+        ->get(route('profile.edit'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('Profile/Edit')
+        ->where('flash.error', 'Gagal memproses pembayaran Midtrans: Server Key tidak valid')
+        ->where('flash.success', 'Operasi sukses')
+    );
+});
+
+test('superadmin can test midtrans credentials via test endpoint with success', function () {
+    $superadmin = User::where('email', 'superadmin@sirkelta.test')->first();
+
+    Http::fake([
+        'https://app.sandbox.midtrans.com/snap/v1/transactions' => Http::response([
+            'token' => 'dummy-snap-token-12345',
+            'redirect_url' => 'https://app.sandbox.midtrans.com/snap/v2/vtweb/dummy-snap-token-12345',
+        ], 201),
+    ]);
+
+    $response = $this->actingAs($superadmin)->postJson(route('admin.website.payment.test-midtrans'), [
+        'mode' => 'sandbox',
+        'server_key' => 'SB-Mid-server-valid-key',
+    ]);
+
+    $response->assertOk();
+    $response->assertJson([
+        'success' => true,
+    ]);
+});
+
+test('superadmin receives error when testing midtrans with invalid credentials', function () {
+    $superadmin = User::where('email', 'superadmin@sirkelta.test')->first();
+
+    Http::fake([
+        'https://app.sandbox.midtrans.com/snap/v1/transactions' => Http::response([
+            'error' => 'Unauthorized',
+        ], 401),
+    ]);
+
+    $responseFail = $this->actingAs($superadmin)->postJson(route('admin.website.payment.test-midtrans'), [
+        'mode' => 'sandbox',
+        'server_key' => 'SB-Mid-server-invalid-key',
+    ]);
+
+    $responseFail->assertStatus(422);
+    $responseFail->assertJson([
+        'success' => false,
+    ]);
+});

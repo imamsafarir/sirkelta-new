@@ -200,8 +200,11 @@ export function initInertiaInterceptor(router) {
 
         const method = (visit.method || 'get').toLowerCase();
         const isMutation = ['post', 'put', 'patch', 'delete'].includes(method);
+        const urlString = visit.url ? visit.url.toString() : '';
 
-        if (isMutation) {
+        if (urlString.includes('payment/order')) {
+            queueState.statusText = 'Menghubungkan ke sistem pembayaran...';
+        } else if (isMutation) {
             queueState.statusText = 'Menyimpan dan mengamankan data...';
         } else {
             queueState.statusText = 'Memuat halaman...';
@@ -213,9 +216,14 @@ export function initInertiaInterceptor(router) {
 
     router.on('progress', (event) => {
         const progress = event.detail?.progress;
+        const hasFiles = event.detail?.visit?.hasFiles;
         if (progress?.percentage !== undefined) {
             queueState.uploadProgress = Math.round(progress.percentage);
-            queueState.statusText = `Mengunggah berkas (${queueState.uploadProgress}%)...`;
+            if (hasFiles) {
+                queueState.statusText = `Mengunggah berkas (${queueState.uploadProgress}%)...`;
+            } else {
+                queueState.statusText = `Memproses transaksi (${queueState.uploadProgress}%)...`;
+            }
         }
     });
 

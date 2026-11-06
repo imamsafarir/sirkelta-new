@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\WebsiteFaq;
 use App\Models\WebsiteSetting;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -141,6 +143,79 @@ class AdminWebsiteController extends Controller
         WebsiteSetting::set('payment_midtrans_merchant_id', $merchantId);
 
         return back()->with('success', 'Pengaturan metode pembayaran berhasil disimpan.');
+    }
+
+    /**
+     * Test connection to Midtrans Snap API with provided/stored credentials.
+     */
+    public function testMidtrans(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'mode' => ['required', 'in:sandbox,production'],
+            'server_key' => ['required', 'string'],
+            'client_key' => ['nullable', 'string'],
+        ]);
+
+        $serverKey = trim($validated['server_key']);
+        $clientKey = trim($validated['client_key'] ?? '');
+
+        // Deteksi otomatis jika input Client Key dan Server Key tertukar
+        if (
+            (str_contains(strtolower($serverKey), '-client-') || str_starts_with($serverKey, 'SB-Mid-client') || str_starts_with($serverKey, 'Mid-client')) &&
+            (str_contains(strtolower($clientKey), '-server-') || str_starts_with($clientKey, 'SB-Mid-server') || str_starts_with($clientKey, 'Mid-server'))
+        ) {
+            $temp = $serverKey;
+            $serverKey = $clientKey;
+            $clientKey = $temp;
+        }
+
+        $isProduction = $validated['mode'] === 'production';
+        $snapUrl = $isProduction
+            ? 'https://app.midtrans.com/snap/v1/transactions'
+            : 'https://app.sandbox.midtrans.com/snap/v1/transactions';
+
+        try {
+            $response = Http::withBasicAuth($serverKey, '')
+                ->acceptJson()
+                ->timeout(10)
+                ->post($snapUrl, [
+                    'transaction_details' => [
+                        'order_id' => 'TEST-PING-'.time(),
+                        'gross_amount' => 10000,
+                    ],
+                    'customer_details' => [
+                        'first_name' => 'Test Ping',
+                        'email' => 'test@sirkelta.test',
+                    ],
+                ]);
+
+            if ($response->successful()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Koneksi ke Midtrans BERHASIL! Signature Secret Key (Server Key) valid dan siap menerima transaksi.',
+                ]);
+            }
+
+            if ($response->status() === 401) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Otentikasi GAGAL (401 Unauthorized): Signature Secret Key (Server Key) tidak dikenali atau salah mode ('.strtoupper($validated['mode']).'). Pastikan Anda menyalin Server Key dari Dashboard Midtrans > Settings > Access Keys.',
+                ], 422);
+            }
+
+            $errorBody = $response->json();
+            $errorMsg = is_array($errorBody) ? ($errorBody['error_messages'][0] ?? $errorBody['error'] ?? $response->body()) : $response->body();
+
+            return response()->json([
+                'success' => false,
+                'message' => "Midtrans mengembalikan respons ({$response->status()}): {$errorMsg}",
+            ], 422);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi gangguan koneksi saat menghubungi server Midtrans: '.$e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
