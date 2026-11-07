@@ -77,6 +77,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     Route::post('/profile/payment/order', [ProfileController::class, 'createPaymentOrder'])->name('profile.payment.order');
     Route::delete('/profile/payment/order/{order}', [ProfileController::class, 'cancelPaymentOrder'])->name('profile.payment.order.cancel');
+    Route::post('/profile/payment/order/{order}/verify', [ProfileController::class, 'verifyPaymentOrder'])->name('profile.payment.order.verify');
     Route::post('/profile/pro/upgrade', [ProfileController::class, 'upgradePro'])->name('profile.pro.upgrade');
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 

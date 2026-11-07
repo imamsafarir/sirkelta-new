@@ -501,3 +501,137 @@ test('midtrans webhook with status expire, cancel, or deny automatically deletes
     $response->assertOk();
     expect(PaymentOrder::where('id', $order->id)->exists())->toBeFalse();
 });
+
+test('profile page active sync deletes expired midtrans order', function () {
+    WebsiteSetting::set('payment_midtrans_server_key', 'test-server-key');
+
+    $user = User::factory()->create();
+    $user->assignRole('user_keuangan');
+
+    $order = PaymentOrder::create([
+        'order_number' => 'ORD-SYNC-EXPIRE-001',
+        'user_id' => $user->id,
+        'module' => 'keuangan',
+        'duration_months' => 1,
+        'gross_amount' => 75000,
+        'discount_applied' => 0,
+        'final_amount' => 75000,
+        'payment_method' => 'midtrans',
+        'status' => 'pending',
+    ]);
+
+    Http::fake([
+        'https://api.sandbox.midtrans.com/v2/ORD-SYNC-EXPIRE-001/status' => Http::response([
+            'status_code' => '200',
+            'transaction_status' => 'expire',
+        ], 200),
+    ]);
+
+    $response = $this->actingAs($user)->get(route('profile.edit'));
+    $response->assertOk();
+
+    expect(PaymentOrder::where('id', $order->id)->exists())->toBeFalse();
+});
+
+test('profile page active sync deletes abandoned 404 midtrans order older than 15 minutes', function () {
+    WebsiteSetting::set('payment_midtrans_server_key', 'test-server-key');
+
+    $user = User::factory()->create();
+    $user->assignRole('user_keuangan');
+
+    $order = PaymentOrder::create([
+        'order_number' => 'ORD-SYNC-404-001',
+        'user_id' => $user->id,
+        'module' => 'keuangan',
+        'duration_months' => 1,
+        'gross_amount' => 75000,
+        'discount_applied' => 0,
+        'final_amount' => 75000,
+        'payment_method' => 'midtrans',
+        'status' => 'pending',
+    ]);
+    $order->created_at = now()->subMinutes(20);
+    $order->save();
+
+    Http::fake([
+        'https://api.sandbox.midtrans.com/v2/ORD-SYNC-404-001/status' => Http::response([
+            'status_code' => '404',
+            'status_message' => "Transaction doesn't exist.",
+        ], 404),
+    ]);
+
+    $response = $this->actingAs($user)->get(route('profile.edit'));
+    $response->assertOk();
+
+    expect(PaymentOrder::where('id', $order->id)->exists())->toBeFalse();
+});
+
+test('verify endpoint deletes expired midtrans order and returns valid false', function () {
+    WebsiteSetting::set('payment_midtrans_server_key', 'test-server-key');
+
+    $user = User::factory()->create();
+    $user->assignRole('user_keuangan');
+
+    $order = PaymentOrder::create([
+        'order_number' => 'ORD-VERIFY-EXPIRE-001',
+        'user_id' => $user->id,
+        'module' => 'keuangan',
+        'duration_months' => 1,
+        'gross_amount' => 75000,
+        'discount_applied' => 0,
+        'final_amount' => 75000,
+        'payment_method' => 'midtrans',
+        'status' => 'pending',
+    ]);
+
+    Http::fake([
+        'https://api.sandbox.midtrans.com/v2/ORD-VERIFY-EXPIRE-001/status' => Http::response([
+            'status_code' => '200',
+            'transaction_status' => 'expire',
+        ], 200),
+    ]);
+
+    $response = $this->actingAs($user)->postJson(route('profile.payment.order.verify', $order->id));
+    $response->assertOk();
+    $response->assertJson([
+        'valid' => false,
+    ]);
+
+    expect(PaymentOrder::where('id', $order->id)->exists())->toBeFalse();
+});
+
+test('verify endpoint returns valid true with snap token if order is still pending in midtrans', function () {
+    WebsiteSetting::set('payment_midtrans_server_key', 'test-server-key');
+
+    $user = User::factory()->create();
+    $user->assignRole('user_keuangan');
+
+    $order = PaymentOrder::create([
+        'order_number' => 'ORD-VERIFY-ACTIVE-001',
+        'user_id' => $user->id,
+        'module' => 'keuangan',
+        'duration_months' => 1,
+        'gross_amount' => 75000,
+        'discount_applied' => 0,
+        'final_amount' => 75000,
+        'payment_method' => 'midtrans',
+        'midtrans_snap_token' => 'live-snap-token-12345',
+        'status' => 'pending',
+    ]);
+
+    Http::fake([
+        'https://api.sandbox.midtrans.com/v2/ORD-VERIFY-ACTIVE-001/status' => Http::response([
+            'status_code' => '200',
+            'transaction_status' => 'pending',
+        ], 200),
+    ]);
+
+    $response = $this->actingAs($user)->postJson(route('profile.payment.order.verify', $order->id));
+    $response->assertOk();
+    $response->assertJson([
+        'valid' => true,
+        'snap_token' => 'live-snap-token-12345',
+    ]);
+
+    expect(PaymentOrder::where('id', $order->id)->exists())->toBeTrue();
+});

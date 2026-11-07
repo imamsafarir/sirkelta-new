@@ -850,6 +850,47 @@ const triggerSnapPayment = (snapToken) => {
 };
 
 const isCancellingOrder = ref(null);
+const isVerifyingOrder = ref(null);
+
+const payExistingOrder = async (order) => {
+    if (!order || !order.id || isVerifyingOrder.value) return;
+
+    isVerifyingOrder.value = order.id;
+    try {
+        const csrfToken =
+            document
+                .querySelector('meta[name="csrf-token"]')
+                ?.getAttribute("content") || "";
+
+        const res = await fetch(route("profile.payment.order.verify", order.id), {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+                "X-CSRF-TOKEN": csrfToken,
+                "X-Silent": "true",
+            },
+        });
+
+        const data = await res.json();
+
+        if (!data.valid) {
+            showToast(data.message || "Pesanan telah kedaluwarsa di Midtrans dan dibersihkan dari riwayat.", data.paid ? "success" : "info");
+            router.reload({ preserveScroll: true });
+            return;
+        }
+
+        const tokenToUse = data.snap_token || order.midtrans_snap_token;
+        if (tokenToUse) {
+            triggerSnapPayment(tokenToUse);
+        }
+    } catch (err) {
+        console.warn("Could not verify order status, falling back to direct snap:", err);
+        triggerSnapPayment(order.midtrans_snap_token);
+    } finally {
+        isVerifyingOrder.value = null;
+    }
+};
 
 const cancelOrder = (order) => {
     if (!order || !order.id || isCancellingOrder.value) return;
@@ -2629,10 +2670,12 @@ const submitDeleteAccount = () => {
                                                         size="sm" 
                                                         variant="outline" 
                                                         class="h-6 text-[10px] px-2.5 gap-1 rounded-lg border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 font-bold"
-                                                        @click="triggerSnapPayment(order.midtrans_snap_token)"
+                                                        :disabled="isVerifyingOrder === order.id"
+                                                        @click="payExistingOrder(order)"
                                                     >
-                                                        <Sparkles class="h-3 w-3" />
-                                                        <span>Bayar Sekarang</span>
+                                                        <Loader2 v-if="isVerifyingOrder === order.id" class="h-3 w-3 animate-spin" />
+                                                        <Sparkles v-else class="h-3 w-3" />
+                                                        <span>{{ isVerifyingOrder === order.id ? 'Memeriksa...' : 'Bayar Sekarang' }}</span>
                                                     </Button>
 
                                                     <Button

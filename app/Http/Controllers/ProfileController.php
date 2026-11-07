@@ -172,12 +172,8 @@ class ProfileController extends Controller
             ],
         ];
 
-        // Bersihkan pesanan pending Midtrans yang telah kedaluwarsa (> 24 jam)
-        PaymentOrder::where('user_id', $user->id)
-            ->where('payment_method', 'midtrans')
-            ->where('status', 'pending')
-            ->where('created_at', '<', now()->subHours(24))
-            ->delete();
+        // Sinkronisasi status riil ke API Midtrans & bersihkan pesanan kedaluwarsa secara otomatis
+        $this->syncUserMidtransOrders($user);
 
         $paymentOrders = PaymentOrder::where('user_id', $user->id)
             ->latest('id')
@@ -1070,5 +1066,176 @@ class ProfileController extends Controller
         $order->delete();
 
         return back()->with('success', "Pesanan #{$orderNumber} berhasil dibatalkan dan dihapus dari riwayat.");
+    }
+
+    /**
+     * Check if a pending payment order is still valid in Midtrans before opening Snap.
+     * If expired or dead, deletes it from database and informs the user.
+     */
+    public function verifyPaymentOrder(Request $request, PaymentOrder $order): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        if ($order->user_id !== $user->id && ! $user->hasRole('superadmin')) {
+            return response()->json(['valid' => false, 'message' => 'Akses ditolak.'], 403);
+        }
+
+        if ($order->status !== 'pending') {
+            return response()->json([
+                'valid' => false,
+                'status' => $order->status,
+                'message' => $order->status === 'paid' ? 'Pesanan ini sudah lunas.' : 'Pesanan ini tidak aktif.',
+            ]);
+        }
+
+        if ($order->payment_method !== 'midtrans') {
+            return response()->json(['valid' => true]);
+        }
+
+        $config = $this->resolveMidtransConfig();
+        $serverKey = $config['serverKey'];
+        $baseUrl = $config['baseUrl'];
+
+        if (! empty($serverKey)) {
+            try {
+                $response = Http::withBasicAuth($serverKey, '')
+                    ->acceptJson()
+                    ->timeout(4)
+                    ->get("{$baseUrl}/{$order->order_number}/status");
+
+                if ($response->successful()) {
+                    $statusData = $response->json();
+                    $trxStatus = $statusData['transaction_status'] ?? null;
+
+                    if (in_array($trxStatus, ['expire', 'cancel', 'deny'])) {
+                        $order->delete();
+
+                        return response()->json([
+                            'valid' => false,
+                            'message' => "Pesanan #{$order->order_number} telah kedaluwarsa di Midtrans ({$trxStatus}) dan otomatis dihapus dari riwayat Anda.",
+                        ]);
+                    }
+
+                    if (in_array($trxStatus, ['settlement', 'capture'])) {
+                        if (($statusData['fraud_status'] ?? 'accept') !== 'challenge') {
+                            app(AdminPaymentOrderController::class)->approve($order);
+
+                            return response()->json([
+                                'valid' => false,
+                                'paid' => true,
+                                'message' => "Pembayaran pesanan #{$order->order_number} sudah berhasil diverifikasi lunas!",
+                            ]);
+                        }
+                    }
+                } elseif ($response->status() === 404) {
+                    // Jika order sudah dibuat > 15 menit lalu dan 404 di Midtrans, Snap token sudah mati
+                    if ($order->created_at && $order->created_at->lt(now()->subMinutes(15))) {
+                        $order->delete();
+
+                        return response()->json([
+                            'valid' => false,
+                            'message' => "Sesi pembayaran Midtrans untuk pesanan #{$order->order_number} telah kedaluwarsa dan otomatis dibersihkan dari riwayat.",
+                        ]);
+                    }
+                }
+            } catch (\Throwable $e) {
+                Log::warning("Could not verify Midtrans order #{$order->order_number}: ".$e->getMessage());
+            }
+        }
+
+        return response()->json([
+            'valid' => true,
+            'snap_token' => $order->midtrans_snap_token,
+        ]);
+    }
+
+    /**
+     * Active real-time synchronization with Midtrans Core API.
+     * Automatically removes expired/cancelled orders and approves settled orders.
+     */
+    private function syncUserMidtransOrders(User $user): void
+    {
+        $config = $this->resolveMidtransConfig();
+        $serverKey = $config['serverKey'];
+        $baseUrl = $config['baseUrl'];
+
+        // Ambil pesanan pending Midtrans milik user
+        $pendingMidtransOrders = PaymentOrder::where('user_id', $user->id)
+            ->where('payment_method', 'midtrans')
+            ->where('status', 'pending')
+            ->get();
+
+        foreach ($pendingMidtransOrders as $order) {
+            // Jika sudah lebih dari 2 jam tanpa pembayaran, langsung hapus (token Snap sudah pasti mati)
+            if ($order->created_at && $order->created_at->lt(now()->subHours(2))) {
+                Log::info("Auto-deleting stale Midtrans order #{$order->order_number} (> 2 hours)");
+                $order->delete();
+
+                continue;
+            }
+
+            // Jika server key dikonfigurasi, tanyakan status langsung ke API Midtrans
+            if (! empty($serverKey)) {
+                try {
+                    $response = Http::withBasicAuth($serverKey, '')
+                        ->acceptJson()
+                        ->timeout(3)
+                        ->get("{$baseUrl}/{$order->order_number}/status");
+
+                    if ($response->successful()) {
+                        $statusData = $response->json();
+                        $trxStatus = $statusData['transaction_status'] ?? null;
+
+                        if (in_array($trxStatus, ['expire', 'cancel', 'deny'])) {
+                            Log::info("Auto-deleting expired Midtrans order #{$order->order_number} via active sync (Status: {$trxStatus})");
+                            $order->delete();
+                        } elseif (in_array($trxStatus, ['settlement', 'capture'])) {
+                            if (($statusData['fraud_status'] ?? 'accept') !== 'challenge') {
+                                app(AdminPaymentOrderController::class)->approve($order);
+                            }
+                        }
+                    } elseif ($response->status() === 404) {
+                        // 404 artinya pengguna belum memilih metode pembayaran di dalam popup Snap.
+                        // Jika order sudah dibuat > 15 menit lalu, token Snap di browser sudah mati/expired.
+                        if ($order->created_at && $order->created_at->lt(now()->subMinutes(15))) {
+                            Log::info("Auto-deleting abandoned Snap order #{$order->order_number} (404 > 15m)");
+                            $order->delete();
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    // Hindari kegagalan halaman jika Midtrans timeout
+                    Log::warning("Could not sync Midtrans order #{$order->order_number}: ".$e->getMessage());
+                }
+            }
+        }
+    }
+
+    /**
+     * Resolve effective Midtrans server key and production mode.
+     *
+     * @return array{serverKey: string, baseUrl: string}
+     */
+    private function resolveMidtransConfig(): array
+    {
+        $serverKey = trim((string) WebsiteSetting::get('payment_midtrans_server_key', ''));
+        $clientKey = trim((string) WebsiteSetting::get('payment_midtrans_client_key', ''));
+
+        if (
+            (str_contains(strtolower($serverKey), '-client-') || str_starts_with($serverKey, 'SB-Mid-client') || str_starts_with($serverKey, 'Mid-client')) &&
+            (str_contains(strtolower($clientKey), '-server-') || str_starts_with($clientKey, 'SB-Mid-server') || str_starts_with($clientKey, 'Mid-server'))
+        ) {
+            $temp = $serverKey;
+            $serverKey = $clientKey;
+            $clientKey = $temp;
+        }
+
+        $isProduction = WebsiteSetting::get('payment_midtrans_mode', 'sandbox') === 'production';
+        $baseUrl = $isProduction ? 'https://api.midtrans.com/v2' : 'https://api.sandbox.midtrans.com/v2';
+
+        return [
+            'serverKey' => $serverKey,
+            'baseUrl' => $baseUrl,
+        ];
     }
 }
