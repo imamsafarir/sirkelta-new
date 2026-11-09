@@ -175,6 +175,16 @@ const passwordsMatch = computed(() => {
     );
 });
 
+const passwordRules = computed(() => {
+    const pwd = resetForm.password || '';
+    const confirm = resetForm.password_confirmation || '';
+    return {
+        minLength: pwd.length >= 8,
+        hasLetterAndNumber: /[A-Za-z]/.test(pwd) && /[0-9]/.test(pwd),
+        matches: pwd.length > 0 && pwd === confirm,
+    };
+});
+
 const handleResetPassword = () => {
     resetForm.clearErrors();
 
@@ -433,6 +443,40 @@ const handleResetPassword = () => {
                             <p v-if="resetForm.errors.password_confirmation" class="text-xs text-destructive font-medium">
                                 {{ resetForm.errors.password_confirmation }}
                             </p>
+                        </div>
+
+                        <!-- Ketentuan Kata Sandi -->
+                        <div class="p-3 rounded-xl bg-muted/40 border border-border/70 space-y-1.5 text-xs">
+                            <p class="text-[11px] font-bold text-foreground flex items-center gap-1.5">
+                                <ShieldCheck class="w-3.5 h-3.5 text-primary" />
+                                <span>Ketentuan Kata Sandi:</span>
+                            </p>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-1.5 text-[11px]">
+                                <div
+                                    class="flex items-center gap-1.5 transition-colors"
+                                    :class="passwordRules.minLength ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-muted-foreground'"
+                                >
+                                    <CheckCircle2 v-if="passwordRules.minLength" class="w-3.5 h-3.5 shrink-0 text-emerald-500" />
+                                    <span v-else class="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 ml-1 mr-1 shrink-0"></span>
+                                    <span>Minimal 8 karakter</span>
+                                </div>
+                                <div
+                                    class="flex items-center gap-1.5 transition-colors"
+                                    :class="passwordRules.hasLetterAndNumber ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-muted-foreground'"
+                                >
+                                    <CheckCircle2 v-if="passwordRules.hasLetterAndNumber" class="w-3.5 h-3.5 shrink-0 text-emerald-500" />
+                                    <span v-else class="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 ml-1 mr-1 shrink-0"></span>
+                                    <span>Kombinasi huruf & angka</span>
+                                </div>
+                                <div
+                                    class="flex items-center gap-1.5 transition-colors"
+                                    :class="passwordRules.matches ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-muted-foreground'"
+                                >
+                                    <CheckCircle2 v-if="passwordRules.matches" class="w-3.5 h-3.5 shrink-0 text-emerald-500" />
+                                    <span v-else class="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 ml-1 mr-1 shrink-0"></span>
+                                    <span>Konfirmasi sandi cocok</span>
+                                </div>
+                            </div>
                         </div>
                     </CardContent>
 

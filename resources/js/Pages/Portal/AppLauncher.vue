@@ -122,25 +122,25 @@ const getInitials = (name) => {
         <!-- Main Body -->
         <main class="flex-1 flex flex-col justify-center py-8 sm:py-16">
             <div class="container mx-auto px-4 sm:px-8 max-w-4xl">
-                <!-- Onboarding Recommendation Banner -->
+                <!-- Welcome & Onboarding Banner -->
                 <div
-                    v-if="!user.phone || showOnboarding"
-                    class="mb-6 p-4 rounded-xl border border-primary/20 bg-primary/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs"
+                    v-if="showOnboarding"
+                    class="mb-6 p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs animate-in fade-in"
                 >
                     <div class="flex items-start sm:items-center gap-3">
-                        <div class="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                            <Sparkles class="h-5 w-5" />
+                        <div class="h-9 w-9 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                            <CheckCircle2 class="h-5 w-5" />
                         </div>
                         <div class="text-xs sm:text-sm">
-                            <p class="font-bold text-foreground">Aktifkan Seluruh Fitur Sirkelta</p>
+                            <p class="font-bold text-foreground">Akun Berhasil Diaktifkan & Terverifikasi! 🎉</p>
                             <p class="text-muted-foreground text-[11px] sm:text-xs">
-                                Lengkapi nomor WhatsApp dan profil akun Anda agar seluruh modul (Keuangan & WaSender) dapat berjalan optimal.
+                                Seluruh data profil Anda sudah siap. Silakan pilih ruang kerja (Keuangan atau WaSender) di bawah ini untuk mulai menggunakan aplikasi.
                             </p>
                         </div>
                     </div>
-                    <Link :href="route('profile.edit', { onboarding: 1 })" class="w-full sm:w-auto">
-                        <Button size="sm" class="gap-1.5 font-semibold shrink-0 w-full sm:w-auto text-xs">
-                            <span>Lengkapi Profil</span>
+                    <Link :href="route('profile.edit')" class="w-full sm:w-auto">
+                        <Button variant="outline" size="sm" class="gap-1.5 font-semibold shrink-0 w-full sm:w-auto text-xs cursor-pointer">
+                            <span>Pengaturan Profil</span>
                             <ArrowRight class="h-3.5 w-3.5" />
                         </Button>
                     </Link>
@@ -248,7 +248,7 @@ const getInitials = (name) => {
                     <!-- Guidance Body -->
                     <div class="space-y-3 bg-muted/40 p-4 rounded-xl border border-border/60 text-xs sm:text-sm">
                         <p class="font-semibold text-foreground text-xs uppercase tracking-wider text-muted-foreground">
-                            Panduan Memulai:
+                            Status Akun Anda:
                         </p>
 
                         <!-- Step 1 -->
@@ -257,52 +257,51 @@ const getInitials = (name) => {
                                 <CheckCircle2 class="w-4 h-4" />
                             </div>
                             <div>
-                                <p class="font-bold text-xs sm:text-sm text-foreground">Email Terverifikasi</p>
-                                <p class="text-[11px] text-muted-foreground">Email dan akun Anda telah sah terdaftar di ekosistem Sirkelta.</p>
+                                <p class="font-bold text-xs sm:text-sm text-foreground">Pendaftaran & Email Terverifikasi</p>
+                                <p class="text-[11px] text-muted-foreground">Email {{ user.email }} telah sah terverifikasi dan akun aktif.</p>
                             </div>
                         </div>
 
                         <!-- Step 2 -->
                         <div class="flex items-start gap-3">
-                            <div class="w-6 h-6 rounded-full bg-primary/15 text-primary flex items-center justify-center shrink-0 mt-0.5">
+                            <div class="w-6 h-6 rounded-full bg-emerald-500/15 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5">
                                 <UserCheck class="w-4 h-4" />
                             </div>
                             <div>
-                                <p class="font-bold text-xs sm:text-sm text-foreground">Lengkapi Profil untuk Aktifkan Seluruh Fitur</p>
+                                <p class="font-bold text-xs sm:text-sm text-foreground">Data Profil Lengkap</p>
                                 <p class="text-[11px] text-muted-foreground">
-                                    Tambahkan nomor WhatsApp dan preferensi Anda agar modul keuangan & integrasi broadcast pesan siap dipakai maksimal.
+                                    Nama lengkap, username unik (@{{ user.username || 'user' }}), dan kredensial Anda sudah tersimpan dengan aman.
                                 </p>
                             </div>
                         </div>
 
                         <!-- Step 3 -->
                         <div class="flex items-start gap-3">
-                            <div class="w-6 h-6 rounded-full bg-muted text-muted-foreground flex items-center justify-center shrink-0 mt-0.5">
-                                <ShieldCheck class="w-4 h-4" />
+                            <div class="w-6 h-6 rounded-full bg-primary/15 text-primary flex items-center justify-center shrink-0 mt-0.5">
+                                <Sparkles class="w-4 h-4" />
                             </div>
                             <div>
-                                <p class="font-bold text-xs sm:text-sm text-foreground">Gunakan Seluruh Aplikasi Satu Pintu</p>
-                                <p class="text-[11px] text-muted-foreground">Buka Sirkelta Keuangan atau WaSender kapan saja dari portal ini.</p>
+                                <p class="font-bold text-xs sm:text-sm text-foreground">Siap Menggunakan Seluruh Modul</p>
+                                <p class="text-[11px] text-muted-foreground">Pilih Sirkelta Keuangan untuk kelola arus kas atau WaSender untuk broadcast pesan WhatsApp.</p>
                             </div>
                         </div>
                     </div>
 
                     <!-- Modal Actions -->
                     <div class="flex flex-col sm:flex-row gap-2.5 pt-1">
-                        <Link :href="route('profile.edit', { onboarding: 1 })" class="flex-1">
-                            <Button class="w-full gap-2 font-bold text-xs sm:text-sm">
-                                <span>Lengkapi Profil Sekarang</span>
-                                <ArrowRight class="h-4 w-4" />
+                        <Button class="flex-1 gap-2 font-bold text-xs sm:text-sm cursor-pointer shadow-xs" @click="closeModal">
+                            <span>Mulai Buka Aplikasi</span>
+                            <ArrowRight class="h-4 w-4" />
+                        </Button>
+                        <Link :href="route('profile.edit')" class="w-full sm:w-auto">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                class="w-full text-xs font-semibold text-muted-foreground hover:text-foreground cursor-pointer"
+                            >
+                                Kelola Profil
                             </Button>
                         </Link>
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            class="text-xs font-semibold text-muted-foreground hover:text-foreground"
-                            @click="closeModal"
-                        >
-                            Nanti Saja, Buka Aplikasi
-                        </Button>
                     </div>
                 </div>
             </div>

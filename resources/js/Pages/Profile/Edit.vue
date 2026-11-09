@@ -417,6 +417,16 @@ const passwordForm = useForm({
     password_confirmation: "",
 });
 
+const passwordRules = computed(() => {
+    const pwd = passwordForm.password || '';
+    const confirm = passwordForm.password_confirmation || '';
+    return {
+        minLength: pwd.length >= 8,
+        hasLetterAndNumber: /[A-Za-z]/.test(pwd) && /[0-9]/.test(pwd),
+        matches: pwd.length > 0 && pwd === confirm,
+    };
+});
+
 const updatePassword = () => {
     passwordForm.clearErrors();
 
@@ -1069,13 +1079,13 @@ const submitDeleteAccount = () => {
             <!-- Onboarding Guidance Banner -->
             <div
                 v-if="isOnboarding"
-                class="p-4 rounded-xl border border-primary/30 bg-primary/10 flex items-start gap-3 shadow-xs animate-in fade-in"
+                class="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 flex items-start gap-3 shadow-xs animate-in fade-in"
             >
-                <Sparkles class="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                <CheckCircle2 class="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                 <div class="text-xs sm:text-sm">
-                    <p class="font-bold text-foreground">Langkah Pengaktifan Fitur: Lengkapi Data Profil</p>
+                    <p class="font-bold text-foreground">Profil Anda Sudah Siap & Terverifikasi! 🎉</p>
                     <p class="text-muted-foreground text-[11px] sm:text-xs mt-0.5 leading-relaxed">
-                        Silakan periksa nama Anda dan lengkapi nomor telepon WhatsApp di bawah ini agar integrasi notifikasi, keuangan, dan seluruh fitur Sirkelta dapat diaktifkan dan digunakan secara penuh.
+                        Seluruh data akun (Nama, Username, dan Email) telah berhasil diverifikasi. Di halaman ini Anda dapat meninjau data akun, memperbarui kata sandi, atau mengelola langganan modul kapan saja.
                     </p>
                 </div>
             </div>
@@ -1752,9 +1762,12 @@ const submitDeleteAccount = () => {
                                 </div>
 
                                 <div class="space-y-1.5">
-                                    <Label for="confirm-password"
-                                        >Konfirmasi Sandi Baru</Label
-                                    >
+                                    <div class="flex items-center justify-between">
+                                        <Label for="confirm-password">Konfirmasi Sandi Baru</Label>
+                                        <span v-if="passwordRules.matches" class="text-[10px] text-emerald-600 font-bold flex items-center gap-0.5">
+                                            <Check class="w-3 h-3" /> Cocok
+                                        </span>
+                                    </div>
                                     <div class="relative">
                                         <Input
                                             id="confirm-password"
@@ -1809,6 +1822,40 @@ const submitDeleteAccount = () => {
                                                 .password_confirmation
                                         }}
                                     </p>
+                                </div>
+
+                                <!-- Ketentuan Kata Sandi -->
+                                <div class="p-3 rounded-xl bg-muted/40 border border-border/70 space-y-1.5 text-xs">
+                                    <p class="text-[11px] font-bold text-foreground flex items-center gap-1.5">
+                                        <ShieldCheck class="w-3.5 h-3.5 text-primary" />
+                                        <span>Ketentuan Kata Sandi:</span>
+                                    </p>
+                                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-1.5 text-[11px]">
+                                        <div
+                                            class="flex items-center gap-1.5 transition-colors"
+                                            :class="passwordRules.minLength ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-muted-foreground'"
+                                        >
+                                            <CheckCircle2 v-if="passwordRules.minLength" class="w-3.5 h-3.5 shrink-0 text-emerald-500" />
+                                            <span v-else class="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 ml-1 mr-1 shrink-0"></span>
+                                            <span>Minimal 8 karakter</span>
+                                        </div>
+                                        <div
+                                            class="flex items-center gap-1.5 transition-colors"
+                                            :class="passwordRules.hasLetterAndNumber ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-muted-foreground'"
+                                        >
+                                            <CheckCircle2 v-if="passwordRules.hasLetterAndNumber" class="w-3.5 h-3.5 shrink-0 text-emerald-500" />
+                                            <span v-else class="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 ml-1 mr-1 shrink-0"></span>
+                                            <span>Kombinasi huruf & angka</span>
+                                        </div>
+                                        <div
+                                            class="flex items-center gap-1.5 transition-colors"
+                                            :class="passwordRules.matches ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-muted-foreground'"
+                                        >
+                                            <CheckCircle2 v-if="passwordRules.matches" class="w-3.5 h-3.5 shrink-0 text-emerald-500" />
+                                            <span v-else class="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 ml-1 mr-1 shrink-0"></span>
+                                            <span>Konfirmasi sandi cocok</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </CardContent>
                             <CardFooter class="pt-4 pb-4 border-t flex justify-end">

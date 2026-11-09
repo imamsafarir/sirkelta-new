@@ -73,8 +73,8 @@ class PortalController extends Controller
             'showOnboarding' => (bool) $request->has('onboarding'),
             'user' => [
                 'name' => $user->name,
+                'username' => $user->username,
                 'email' => $user->email,
-                'phone' => $user->phone ?? null,
                 'roles' => $user->getRoleNames(),
             ],
         ]);
