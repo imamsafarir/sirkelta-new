@@ -8,11 +8,13 @@ use App\Models\ReferralLog;
 use App\Models\User;
 use App\Models\WebsiteSetting;
 use App\Notifications\AccountActivationNotification;
+use App\Notifications\PasswordResetOtpNotification;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\URL;
@@ -292,6 +294,186 @@ class AuthController extends Controller
             'available' => true,
             'message' => 'Username tersedia!',
         ]);
+    }
+
+    /**
+     * Show the forgot password view.
+     */
+    public function showForgotPassword(): Response
+    {
+        return Inertia::render('Auth/ForgotPassword');
+    }
+
+    /**
+     * Send a 6-digit OTP code to user's registered email for password recovery.
+     */
+    public function sendPasswordResetOtp(Request $request): JsonResponse
+    {
+        $input = strtolower(trim((string) ($request->input('login') ?? $request->input('email') ?? '')));
+
+        if (empty($input)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Alamat email atau username wajib diisi.',
+            ], 422);
+        }
+
+        $user = User::where('email', $input)
+            ->orWhere('username', $input)
+            ->first();
+
+        if (! $user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akun dengan email atau username tersebut tidak ditemukan.',
+            ], 422);
+        }
+
+        $cooldownKey = 'password_reset_cooldown_'.$user->id;
+        if (Cache::has($cooldownKey)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Silakan tunggu 60 detik sebelum meminta kode OTP kembali.',
+            ], 429);
+        }
+
+        $otp = (string) random_int(100000, 999999);
+        $cacheKey = 'password_reset_otp_'.$user->id;
+
+        Cache::put($cacheKey, [
+            'code' => $otp,
+            'attempts' => 0,
+            'email' => $user->email,
+        ], now()->addMinutes(15));
+
+        Cache::put($cooldownKey, true, now()->addSeconds(60));
+
+        $user->notify(new PasswordResetOtpNotification($otp, $user->name));
+
+        $parts = explode('@', $user->email);
+        $namePart = $parts[0];
+        $domainPart = $parts[1] ?? '';
+        $maskedName = strlen($namePart) <= 2
+            ? substr($namePart, 0, 1).'***'
+            : substr($namePart, 0, 2).str_repeat('*', min(4, max(2, strlen($namePart) - 3))).substr($namePart, -1);
+        $maskedEmail = $maskedName.'@'.$domainPart;
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Kode OTP berhasil dikirimkan ke email Anda.',
+            'user_id' => $user->id,
+            'masked_email' => $maskedEmail,
+        ]);
+    }
+
+    /**
+     * Verify the 6-digit OTP code submitted by the user.
+     */
+    public function verifyPasswordResetOtp(Request $request): JsonResponse
+    {
+        $request->validate([
+            'user_id' => ['required', 'integer'],
+            'otp' => ['required', 'string'],
+        ], [
+            'user_id.required' => 'Identifikasi pengguna tidak valid.',
+            'otp.required' => 'Kode OTP wajib diisi.',
+        ]);
+
+        $userId = (int) $request->user_id;
+        $submittedOtp = preg_replace('/\D/', '', (string) $request->otp);
+
+        $cacheKey = 'password_reset_otp_'.$userId;
+        $stored = Cache::get($cacheKey);
+
+        if (! $stored) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Kode OTP telah kedaluwarsa atau belum pernah diminta. Silakan minta kode baru.',
+            ], 422);
+        }
+
+        if (($stored['attempts'] ?? 0) >= 5) {
+            Cache::forget($cacheKey);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda telah salah memasukkan kode OTP sebanyak 5 kali. Demi keamanan, kode OTP telah hangus. Silakan minta kode baru.',
+            ], 422);
+        }
+
+        if (! hash_equals((string) $stored['code'], (string) $submittedOtp)) {
+            $stored['attempts'] = ($stored['attempts'] ?? 0) + 1;
+            Cache::put($cacheKey, $stored, now()->addMinutes(15));
+            $remaining = 5 - $stored['attempts'];
+
+            return response()->json([
+                'success' => false,
+                'message' => "Kode OTP yang Anda masukkan salah. Sisa kesempatan: {$remaining} kali.",
+            ], 422);
+        }
+
+        // OTP Valid: buat token reset aman berdurasi 15 menit dan konsumsi OTP
+        $resetToken = Str::random(64);
+        Cache::put('password_reset_token_'.$userId, $resetToken, now()->addMinutes(15));
+        Cache::forget($cacheKey);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Kode OTP berhasil diverifikasi!',
+            'user_id' => $userId,
+            'reset_token' => $resetToken,
+        ]);
+    }
+
+    /**
+     * Set a new password using the verified reset token.
+     */
+    public function resetPasswordWithOtp(Request $request): RedirectResponse|JsonResponse
+    {
+        $request->validate([
+            'user_id' => ['required', 'integer'],
+            'reset_token' => ['required', 'string'],
+            'password' => ['required', 'confirmed', Password::defaults()],
+        ], [
+            'user_id.required' => 'Identifikasi pengguna tidak valid.',
+            'reset_token.required' => 'Token verifikasi wajib disertakan.',
+            'password.required' => 'Kata sandi baru wajib diisi.',
+            'password.confirmed' => 'Konfirmasi kata sandi baru tidak cocok.',
+            'password.min' => 'Kata sandi minimal harus 8 karakter.',
+        ]);
+
+        $userId = (int) $request->user_id;
+        $storedToken = Cache::get('password_reset_token_'.$userId);
+
+        if (! $storedToken || ! hash_equals($storedToken, (string) $request->reset_token)) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Sesi reset kata sandi telah kedaluwarsa. Silakan ulangi proses lupa kata sandi.',
+                ], 422);
+            }
+
+            return back()->withErrors([
+                'password' => 'Sesi reset kata sandi telah kedaluwarsa. Silakan ulangi proses lupa kata sandi.',
+            ]);
+        }
+
+        $user = User::findOrFail($userId);
+        $user->forceFill([
+            'password' => Hash::make($request->password),
+        ])->save();
+
+        Cache::forget('password_reset_token_'.$userId);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Kata sandi berhasil diperbarui! Silakan masuk dengan kata sandi baru Anda.',
+                'redirect' => route('login'),
+            ]);
+        }
+
+        return redirect()->route('login')->with('status', 'Kata sandi Anda berhasil diperbarui! Silakan masuk dengan kata sandi baru Anda.');
     }
 
     /**

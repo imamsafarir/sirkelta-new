@@ -91,6 +91,12 @@ const submit = () => {
                     <div class="space-y-1.5">
                         <div class="flex items-center justify-between">
                             <Label for="password">Kata Sandi</Label>
+                            <Link
+                                :href="route('password.request')"
+                                class="text-xs text-primary hover:underline font-semibold transition-colors"
+                            >
+                                Lupa kata sandi?
+                            </Link>
                         </div>
                         <div class="relative">
                             <Input

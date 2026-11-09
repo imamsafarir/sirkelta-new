@@ -47,6 +47,10 @@ Route::middleware('guest')->group(function () {
     Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:auth')->name('register.attempt');
     Route::get('/register/complete', [AuthController::class, 'showCompleteRegistration'])->middleware('signed')->name('register.complete');
     Route::post('/register/complete', [AuthController::class, 'completeRegistration'])->name('register.complete.submit');
+    Route::get('/forgot-password', [AuthController::class, 'showForgotPassword'])->name('password.request');
+    Route::post('/forgot-password/send-otp', [AuthController::class, 'sendPasswordResetOtp'])->middleware('throttle:auth')->name('password.otp.send');
+    Route::post('/forgot-password/verify-otp', [AuthController::class, 'verifyPasswordResetOtp'])->middleware('throttle:auth')->name('password.otp.verify');
+    Route::post('/forgot-password/reset', [AuthController::class, 'resetPasswordWithOtp'])->middleware('throttle:auth')->name('password.reset.submit');
 });
 
 // Email Verification Notice & Handlers
