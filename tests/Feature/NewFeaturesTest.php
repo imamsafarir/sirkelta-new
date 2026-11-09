@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\PendingRegistration;
 use App\Models\ReferralLog;
 use App\Models\SupportMessage;
 use App\Models\SupportTicket;
@@ -8,6 +9,7 @@ use App\Models\WebsiteFaq;
 use App\Models\WebsiteSetting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
 
@@ -41,14 +43,30 @@ test('registration requires username and records referral reward when ref code i
     $referrer = User::where('email', 'userkeuangan@sirkelta.test')->first();
     $refUsername = $referrer->username;
 
-    $response = $this->post('/register', [
+    // 1. Initial register sends activation
+    $this->post('/register', [
+        'email' => 'budi@example.com',
+        'referral_code' => strtoupper($refUsername),
+    ]);
+
+    $token = Str::random(64);
+    PendingRegistration::updateOrCreate(
+        ['email' => 'budi@example.com'],
+        [
+            'token' => hash('sha256', $token),
+            'referral_code' => strtolower($refUsername),
+            'expires_at' => now()->addHours(24),
+        ]
+    );
+
+    // 2. Complete registration
+    $response = $this->post(route('register.complete.submit'), [
+        'email' => 'budi@example.com',
+        'token' => $token,
         'name' => 'Budi Santoso',
         'username' => 'budisantoso',
-        'email' => 'budi@example.com',
         'password' => 'password123',
         'password_confirmation' => 'password123',
-        'referral_code' => strtoupper($refUsername),
-        'initial_modules' => ['keuangan'],
     ]);
 
     $this->assertAuthenticated();
@@ -349,8 +367,8 @@ test('single module user can activate second application for free to unlock mult
         ->where('proApps.1.is_accessible', false)
     );
 
-    // 2. Portal auto-redirects single app user directly to keuangan dashboard
-    $this->actingAs($user)->get(route('portal'))->assertRedirect(route('keuangan.dashboard'));
+    // 2. Portal can be opened directly by single-app user with 1-click activate option
+    $this->actingAs($user)->get(route('portal'))->assertStatus(200);
 
     // 3. User activates WaSender for free
     $activateRes = $this->actingAs($user)->post(route('profile.modules.activate'), [

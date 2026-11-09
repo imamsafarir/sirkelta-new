@@ -39,7 +39,8 @@ import {
     Settings,
     Headphones,
     Plus,
-    Download
+    Download,
+    Sparkles
 } from 'lucide-vue-next';
 import SupportChatBubble from '@/Components/SupportChatBubble.vue';
 import TransactionModal from '@modules/Keuangan/resources/assets/js/Components/TransactionModal.vue';
@@ -76,7 +77,7 @@ const hasAdminAccess = computed(() => {
 });
 
 const canSwitchWorkspaces = computed(() => {
-    return (props.user?.accessible_modules?.length > 1) || hasAdminAccess.value;
+    return true; // All users can open switcher to explore or switch workspaces
 });
 
 const currentWorkspaceLabel = computed(() => {
@@ -294,6 +295,26 @@ const getInitials = (name) => {
                                     <Badge v-if="activeModule === 'keuangan'" variant="secondary" class="text-[9px]">Aktif</Badge>
                                 </Link>
                             </DropdownMenuItem>
+                            <DropdownMenuItem 
+                                v-else
+                                as-child
+                            >
+                                <Link 
+                                    :href="route('portal')" 
+                                    class="cursor-pointer flex items-center justify-between py-2 text-muted-foreground hover:text-foreground"
+                                >
+                                    <div class="flex items-center gap-2.5">
+                                        <div class="h-7 w-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                            <Wallet class="h-4 w-4" />
+                                        </div>
+                                        <div class="flex flex-col">
+                                            <span class="text-xs">Sirkelta Keuangan</span>
+                                            <span class="text-[10px] text-muted-foreground">Pencatatan Finansial</span>
+                                        </div>
+                                    </div>
+                                    <Badge variant="outline" class="text-[9px] text-primary border-primary/30 bg-primary/5 font-bold">+ Pasang</Badge>
+                                </Link>
+                            </DropdownMenuItem>
 
                             <!-- Modul WaSender -->
                             <DropdownMenuItem 
@@ -315,6 +336,42 @@ const getInitials = (name) => {
                                         </div>
                                     </div>
                                     <Badge v-if="activeModule === 'wasender'" variant="secondary" class="text-[9px]">Aktif</Badge>
+                                </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                                v-else
+                                as-child
+                            >
+                                <Link 
+                                    :href="route('portal')" 
+                                    class="cursor-pointer flex items-center justify-between py-2 text-muted-foreground hover:text-foreground"
+                                >
+                                    <div class="flex items-center gap-2.5">
+                                        <div class="h-7 w-7 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
+                                            <Send class="h-4 w-4" />
+                                        </div>
+                                        <div class="flex flex-col">
+                                            <span class="text-xs">Sirkelta WaSender</span>
+                                            <span class="text-[10px] text-muted-foreground">Broadcast WhatsApp</span>
+                                        </div>
+                                    </div>
+                                    <Badge variant="outline" class="text-[9px] text-emerald-600 border-emerald-500/30 bg-emerald-500/10 font-bold">+ Pasang</Badge>
+                                </Link>
+                            </DropdownMenuItem>
+
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem as-child>
+                                <Link :href="route('portal')" class="cursor-pointer flex items-center justify-between py-2 text-primary font-bold">
+                                    <div class="flex items-center gap-2.5">
+                                        <div class="h-7 w-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                            <Plus class="h-4 w-4" />
+                                        </div>
+                                        <div class="flex flex-col">
+                                            <span class="text-xs">Jelajahi Ekosistem</span>
+                                            <span class="text-[10px] text-muted-foreground">Aktifkan modul aplikasi baru</span>
+                                        </div>
+                                    </div>
+                                    <ChevronRight class="h-3.5 w-3.5 text-muted-foreground" />
                                 </Link>
                             </DropdownMenuItem>
 
@@ -556,6 +613,12 @@ const getInitials = (name) => {
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent class="w-56 font-sans" align="end" side="top">
+                        <DropdownMenuItem as-child>
+                            <Link :href="route('profile.edit', { section: 'pro', app: activeModule })" class="cursor-pointer flex items-center gap-2.5 py-2 text-xs font-semibold text-amber-600 dark:text-amber-400">
+                                <Sparkles class="h-4 w-4 shrink-0 text-amber-500 fill-amber-400" />
+                                <span>Upgrade Paket Pro</span>
+                            </Link>
+                        </DropdownMenuItem>
                         <DropdownMenuItem as-child>
                             <Link :href="route('profile.edit')" class="cursor-pointer flex items-center gap-2.5 py-2 text-xs font-semibold">
                                 <UserIcon class="h-4 w-4 text-primary shrink-0" />

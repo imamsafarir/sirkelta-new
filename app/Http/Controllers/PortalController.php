@@ -18,12 +18,6 @@ class PortalController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        // If user only has access to exactly 1 module and no admin access, bypass portal and go directly to that dashboard (unless onboarding)
-        $accessible = $user->accessibleModules();
-        $hasAdminAccess = $user->hasRole('superadmin') || $user->hasAnyRole(['admin_web', 'admin_keuangan', 'admin_wasender']);
-        if (count($accessible) === 1 && ! $hasAdminAccess && ! $request->has('onboarding')) {
-            return redirect($user->resolveDefaultDashboardRoute());
-        }
         $isSuperadmin = $user->hasRole('superadmin');
 
         $hasKeuanganAccess = $isSuperadmin || $user->hasAnyRole(['admin_keuangan', 'user_keuangan']);

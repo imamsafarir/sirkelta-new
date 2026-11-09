@@ -125,6 +125,21 @@ const scrollToSection = (sectionId) => {
 };
 
 onMounted(() => {
+    if (typeof window !== "undefined") {
+        const urlParams = new URLSearchParams(window.location.search);
+        const appParam = urlParams.get("app");
+        if (appParam && ["keuangan", "wasender"].includes(appParam)) {
+            activeComparisonTab.value = appParam;
+        }
+        const sectionParam = urlParams.get("section");
+        if (sectionParam && ["account", "pro", "referral"].includes(sectionParam)) {
+            activeSection.value = sectionParam;
+            nextTick(() => {
+                scrollToSection(sectionParam);
+            });
+        }
+    }
+
     const rawHash = window.location.hash.replace("#", "");
     if (["account", "pro", "referral", "tagihan", "paket"].includes(rawHash)) {
         const target = rawHash === "tagihan" || rawHash === "paket" ? "pro" : rawHash;
@@ -680,6 +695,12 @@ const openCheckoutModal = (app, months) => {
 const setCheckoutDuration = (months) => {
     checkoutDuration.value = months;
     checkoutForm.duration_months = months;
+};
+
+const setCheckoutApp = (app) => {
+    checkoutApp.value = app;
+    checkoutForm.module = app.module;
+    activeComparisonTab.value = app.module;
 };
 
 const closeCheckoutModal = () => {
@@ -2486,15 +2507,16 @@ const submitDeleteAccount = () => {
                                             <Button
                                                 type="button"
                                                 size="sm"
-                                                class="w-full text-xs font-bold h-8 cursor-pointer gap-1 shadow-2xs"
+                                                class="w-full text-xs font-bold h-9 cursor-pointer gap-1.5 shadow-2xs"
                                                 :variant="tier.isPopular ? 'default' : 'outline'"
+                                                :class="tier.isPopular && currentSelectedApp?.module === 'wasender' ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600' : ''"
                                                 @click="openCheckoutModal(currentSelectedApp, tier.months)"
                                             >
-                                                <Sparkles v-if="tier.isPopular" class="w-3 h-3 text-amber-300" />
+                                                <Sparkles v-if="tier.isPopular" class="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
                                                 <span>{{
                                                     currentSelectedApp?.is_pro
-                                                        ? `Perpanjang (${tier.months} Bln)`
-                                                        : `Pilih (${tier.months} Bln)`
+                                                        ? `Perpanjang ${currentSelectedApp?.module === 'wasender' ? 'WaSender' : 'Keuangan'} (${tier.months} Bln)`
+                                                        : `Pilih ${currentSelectedApp?.module === 'wasender' ? 'WaSender' : 'Keuangan'} (${tier.months} Bln)`
                                                 }}</span>
                                             </Button>
                                         </div>
@@ -2579,13 +2601,14 @@ const submitDeleteAccount = () => {
                                                         type="button"
                                                         size="sm"
                                                         class="w-full sm:w-auto font-bold text-xs h-8 cursor-pointer gap-1.5 shadow-xs"
+                                                        :class="currentSelectedApp?.module === 'wasender' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''"
                                                         @click="openCheckoutModal(currentSelectedApp, 6)"
                                                     >
                                                         <Sparkles class="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
                                                         <span>{{
                                                             currentSelectedApp?.is_pro
-                                                                ? "Perpanjang Masa Aktif Pro"
-                                                                : "Upgrade ke Pro Sekarang"
+                                                                ? `Perpanjang ${currentSelectedApp?.module === 'wasender' ? 'WaSender' : 'Keuangan'} Pro (6 Bulan)`
+                                                                : `Upgrade ${currentSelectedApp?.module === 'wasender' ? 'WaSender' : 'Keuangan'} Pro (6 Bulan)`
                                                         }}</span>
                                                     </Button>
                                                 </td>
@@ -2957,6 +2980,56 @@ const submitDeleteAccount = () => {
                         >
                             <X class="h-4 w-4" />
                         </Button>
+                    </div>
+
+                    <!-- App Identity Confirmation Banner (Anti-Salah Modul) -->
+                    <div 
+                        class="p-3.5 rounded-xl border flex items-center justify-between gap-3 shadow-2xs"
+                        :class="checkoutApp.module === 'wasender' ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-primary/10 border-primary/30'"
+                    >
+                        <div class="flex items-center gap-3">
+                            <div 
+                                class="h-10 w-10 rounded-xl flex items-center justify-center shrink-0"
+                                :class="checkoutApp.module === 'wasender' ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400' : 'bg-primary/20 text-primary'"
+                            >
+                                <Send v-if="checkoutApp.module === 'wasender'" class="h-5 w-5" />
+                                <Wallet v-else class="h-5 w-5" />
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Aplikasi:</span>
+                                    <Badge class="text-[10px] font-black uppercase" :class="checkoutApp.module === 'wasender' ? 'bg-emerald-600 text-white' : 'bg-primary text-primary-foreground'">
+                                        {{ checkoutApp.name }}
+                                    </Badge>
+                                </div>
+                                <p class="text-xs sm:text-sm font-extrabold text-foreground mt-0.5">
+                                    Langganan Pro {{ checkoutDuration }} Bulan
+                                </p>
+                            </div>
+                        </div>
+                        <div class="text-right hidden sm:block">
+                            <span class="text-[10px] text-muted-foreground block">Masa Aktif:</span>
+                            <span class="text-xs font-bold text-foreground">{{ checkoutDuration }} Bulan Penuh</span>
+                        </div>
+                    </div>
+
+                    <!-- Switcher jika salah pilih aplikasi -->
+                    <div class="flex items-center justify-between text-xs bg-muted/40 p-2 px-3 rounded-xl border border-border/60">
+                        <span class="text-muted-foreground text-[11px] font-medium">Bukan aplikasi ini? Ganti ke:</span>
+                        <div class="flex items-center gap-1.5">
+                            <button
+                                v-for="app in proApps"
+                                :key="app.module"
+                                type="button"
+                                class="px-2.5 py-1 rounded-md text-[10px] font-bold cursor-pointer transition-all"
+                                :class="checkoutApp.module === app.module 
+                                    ? (app.module === 'wasender' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-primary text-primary-foreground shadow-xs') 
+                                    : 'bg-background hover:bg-muted text-muted-foreground hover:text-foreground border border-border/60'"
+                                @click="setCheckoutApp(app)"
+                            >
+                                {{ app.module === 'wasender' ? 'WaSender Pro' : 'Keuangan Pro' }}
+                            </button>
+                        </div>
                     </div>
 
                     <form @submit.prevent="submitCheckout" class="space-y-4">
@@ -3494,7 +3567,8 @@ const submitDeleteAccount = () => {
                                 v-else
                                 type="submit"
                                 size="sm"
-                                class="text-xs font-bold gap-1.5 px-5 cursor-pointer"
+                                class="text-xs font-bold gap-1.5 px-5 cursor-pointer shadow-xs"
+                                :class="checkoutApp.module === 'wasender' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''"
                                 :disabled="checkoutForm.processing"
                             >
                                 <Sparkles
@@ -3511,8 +3585,8 @@ const submitDeleteAccount = () => {
                                             ? "Memproses..."
                                             : checkoutForm.payment_method ===
                                                 "midtrans"
-                                              ? "Bayar Sekarang via Midtrans"
-                                              : "Konfirmasi & Kirim Bukti"
+                                              ? `Bayar ${checkoutApp.module === 'wasender' ? 'WaSender' : 'Keuangan'} Pro (${formatRupiah(checkoutCalculation.finalAmount)})`
+                                              : `Konfirmasi Transfer ${checkoutApp.module === 'wasender' ? 'WaSender' : 'Keuangan'} Pro`
                                     }}
                                 </span>
                             </Button>

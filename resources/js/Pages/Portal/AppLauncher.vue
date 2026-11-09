@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue';
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +26,8 @@ import {
     User,
     X,
     UserCheck,
+    Plus,
+    Loader2,
 } from 'lucide-vue-next';
 
 const props = defineProps({
@@ -65,6 +67,17 @@ const getInitials = (name) => {
             .substring(0, 2)
             .toUpperCase() || 'SK'
     );
+};
+
+const activateForm = useForm({
+    module: '',
+});
+
+const handleActivate = (moduleId) => {
+    activateForm.module = moduleId;
+    activateForm.post(route('profile.modules.activate'), {
+        preserveScroll: true,
+    });
 };
 </script>
 
@@ -162,7 +175,7 @@ const getInitials = (name) => {
                         v-for="app in apps"
                         :key="app.id"
                         class="border shadow-xs hover:border-primary/50 transition-all flex flex-col justify-between"
-                        :class="{ 'opacity-60 bg-muted/40': !app.has_access }"
+                        :class="!app.has_access ? 'bg-muted/10 border-border/80' : 'bg-card'"
                     >
                         <div>
                             <CardHeader class="pb-4">
@@ -176,12 +189,13 @@ const getInitials = (name) => {
                                     </div>
                                     <Badge
                                         :variant="app.has_access ? 'secondary' : 'outline'"
-                                        class="text-[11px] font-medium"
+                                        class="text-[11px] font-semibold"
+                                        :class="!app.has_access ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20' : ''"
                                     >
                                         <span v-if="app.has_access">{{ app.role_label }}</span>
-                                        <span v-else class="flex items-center gap-1">
-                                            <Lock class="h-3 w-3" />
-                                            Perlu Akses
+                                        <span v-else class="flex items-center gap-1 font-bold">
+                                            <Sparkles class="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                                            Tersedia Gratis
                                         </span>
                                     </Badge>
                                 </div>
@@ -195,16 +209,22 @@ const getInitials = (name) => {
                         <CardFooter class="pt-4 pb-5">
                             <template v-if="app.has_access">
                                 <Link :href="app.route" class="w-full">
-                                    <Button class="w-full gap-2 font-semibold shadow-xs">
+                                    <Button class="w-full gap-2 font-semibold shadow-xs cursor-pointer">
                                         <span>Buka Aplikasi</span>
                                         <ArrowRight class="h-4 w-4" />
                                     </Button>
                                 </Link>
                             </template>
                             <template v-else>
-                                <Button disabled variant="outline" class="w-full gap-2 text-xs">
-                                    <Lock class="h-3.5 w-3.5" />
-                                    <span>Terkunci</span>
+                                <Button
+                                    type="button"
+                                    class="w-full gap-2 font-bold shadow-xs cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white"
+                                    :disabled="activateForm.processing && activateForm.module === app.id"
+                                    @click="handleActivate(app.id)"
+                                >
+                                    <Loader2 v-if="activateForm.processing && activateForm.module === app.id" class="h-4 w-4 animate-spin" />
+                                    <Plus v-else class="h-4 w-4" />
+                                    <span>{{ activateForm.processing && activateForm.module === app.id ? 'Memasang Aplikasi...' : 'Aktifkan Gratis Sekarang' }}</span>
                                 </Button>
                             </template>
                         </CardFooter>
